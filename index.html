@@ -521,7 +521,7 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
           <div style="font-size:13px;color:#9CA3AF;margin-bottom:6px">✗ Priority Support</div>
           <div style="font-size:13px;color:#9CA3AF;margin-bottom:16px">✗ Data Export</div>
         </div>
-        <a href="#" style="display:block;text-align:center;background:#1a1a2e;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:600;text-decoration:none">Get started free</a>
+        <a href="https://apps.apple.com/ca/app/condo-super/id6756904817" target="_blank" style="display:block;text-align:center;background:#1a1a2e;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:600;text-decoration:none">Get started free</a>
       </div>
     </div>
 
@@ -547,7 +547,7 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
           <div style="font-size:13px;color:#9CA3AF;margin-bottom:6px">✗ Priority Support</div>
           <div style="font-size:13px;color:#16A34A;font-weight:500;margin-bottom:16px">✓ Data Export</div>
         </div>
-        <button onclick="openPaymentModal('starter', currentBillingMode, '$49.00/month')" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $49/month</button>
+        <button class="subscribe-btn" data-plan="starter" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $49/month</button>
       </div>
     </div>
 
@@ -572,7 +572,7 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
           <div style="font-size:13px;color:#16A34A;font-weight:500;margin-bottom:6px">✓ Priority Support</div>
           <div style="font-size:13px;color:#16A34A;font-weight:500;margin-bottom:16px">✓ Data Export</div>
         </div>
-        <button onclick="openPaymentModal('professional', currentBillingMode, '$149.00/month')" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $149/month</button>
+        <button class="subscribe-btn" data-plan="professional" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $149/month</button>
       </div>
     </div>
 
@@ -597,7 +597,7 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
           <div style="font-size:13px;color:#16A34A;font-weight:500;margin-bottom:6px">✓ Priority Support</div>
           <div style="font-size:13px;color:#16A34A;font-weight:500;margin-bottom:16px">✓ Data Export</div>
         </div>
-        <button onclick="openPaymentModal('enterprise', currentBillingMode, '$249.00/month')" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $249/month</button>
+        <button class="subscribe-btn" data-plan="enterprise" style="width:100%;display:block;text-align:center;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Subscribe — $249/month</button>
       </div>
     </div>
 
@@ -634,6 +634,20 @@ function setPricing(mode) {
     document.querySelector('.plan-price-pro').innerHTML     = prices.pro     + '<span style="font-size:14px;font-weight:400;color:#9CA3AF">' + period + '</span>';
     document.querySelector('.plan-price-ent').innerHTML     = prices.ent     + '<span style="font-size:14px;font-weight:400;color:#9CA3AF">' + period + '</span>';
   }
+
+  // Wire up subscribe buttons via event listeners (avoids inline onclick quoting issues)
+  const PRICE_LABELS_MAP = {
+    starter:      { monthly: '$49.00/month',   yearly: '$39.20/month' },
+    professional: { monthly: '$149.00/month',  yearly: '$119.20/month' },
+    enterprise:   { monthly: '$249.00/month',  yearly: '$199.20/month' },
+  };
+  document.querySelectorAll('.subscribe-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var plan = btn.getAttribute('data-plan');
+      var label = PRICE_LABELS_MAP[plan][currentBillingMode];
+      openPaymentModal(plan, currentBillingMode, label);
+    });
+  });
   </script>
 </section>
 
