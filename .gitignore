@@ -1,0 +1,5 @@
+functions/.env
+functions/.env.local
+node_modules/
+functions/node_modules/
+.firebase/
