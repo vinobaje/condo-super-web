@@ -6,11 +6,17 @@ const cors = require("cors")({ origin: true });
 admin.initializeApp();
 const db = admin.firestore();
 
-// ─── STRIPE CONFIG (via environment variables) ────────────────────────────────
-// Set via: firebase functions:secrets:set STRIPE_SECRET
-// Or in functions/.env file for local dev
-const STRIPE_SECRET         = process.env.STRIPE_SECRET         || functions.config().stripe?.secret;
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || functions.config().stripe?.webhook_secret;
+// ─── STRIPE CONFIG ────────────────────────────────────────────────────────────
+const STRIPE_SECRET = process.env.STRIPE_SECRET || functions.config().stripe?.secret;
+
+// Each webhook destination has its own signing secret
+// Since all 4 point to the same endpoint, we try each secret until one validates
+const WEBHOOK_SECRETS = [
+  "whsec_UaVKECKWyp2a5RuiUwHDaSq2txPWlgUV",  // invoice.payment_succeeded
+  "whsec_Dt1IEknm5iRWmFoQELqHwneiRio7OiCg",  // invoice.payment_failed
+  "whsec_hDa4BdNL83DA20c3xMi7Xi1bxa0vvluA",  // customer.subscription.deleted
+  "whsec_mvWnpKw8bWwbb7UphRvyMpmGtW4RJ0H8",  // customer.subscription.updated
+];
 
 // ─── REAL PRICE IDs ───────────────────────────────────────────────────────────
 const PRICES = {
@@ -67,46 +73,70 @@ exports.createPaymentIntent = functions.https.onRequest((req, res) => {
 });
 
 // ─── 2. STRIPE WEBHOOK ────────────────────────────────────────────────────────
+// Tries all 4 signing secrets since each event destination has its own
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  let event;
-  try {
-    event = stripe(STRIPE_SECRET).webhooks.constructEvent(req.rawBody, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error("Webhook signature failed:", err.message);
+  const stripeClient = stripe(STRIPE_SECRET);
+  let event = null;
+
+  // Try each secret until one validates
+  for (const secret of WEBHOOK_SECRETS) {
+    try {
+      event = stripeClient.webhooks.constructEvent(req.rawBody, sig, secret);
+      break; // Found the right secret
+    } catch (err) {
+      continue;
+    }
+  }
+
+  if (!event) {
+    console.error("Webhook: no valid signing secret matched");
     return res.status(400).send("Webhook signature verification failed");
   }
+
   try {
-    const stripeClient = stripe(STRIPE_SECRET);
     switch (event.type) {
+
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
         const sub = await stripeClient.subscriptions.retrieve(invoice.subscription);
         const { plan, billing, email } = sub.metadata;
         await db.collection("subscriptions").doc(email).set({
-          customerId: invoice.customer, subscriptionId: invoice.subscription,
-          plan, billing, email, status: "active",
+          customerId: invoice.customer,
+          subscriptionId: invoice.subscription,
+          plan, billing, email,
+          status: "active",
           currentPeriodEnd: new Date(sub.current_period_end * 1000),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        console.log(`✅ Active: ${email} → ${plan} (${billing})`);
         break;
       }
+
       case "invoice.payment_failed": {
-        const sub = await stripeClient.subscriptions.retrieve(event.data.object.subscription);
-        await db.collection("subscriptions").doc(sub.metadata.email).set({
-          status: "payment_failed", updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        const invoice = event.data.object;
+        const sub = await stripeClient.subscriptions.retrieve(invoice.subscription);
+        const { email } = sub.metadata;
+        await db.collection("subscriptions").doc(email).set({
+          status: "payment_failed",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        console.log(`⚠️ Payment failed: ${email}`);
         break;
       }
+
       case "customer.subscription.deleted": {
-        const { email } = event.data.object.metadata;
+        const sub = event.data.object;
+        const { email } = sub.metadata;
         await db.collection("subscriptions").doc(email).set({
           status: "cancelled",
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        console.log(`❌ Cancelled: ${email}`);
         break;
       }
+
       case "customer.subscription.updated": {
         const sub = event.data.object;
         const { email, plan, billing } = sub.metadata;
@@ -115,12 +145,18 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
           currentPeriodEnd: new Date(sub.current_period_end * 1000),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        console.log(`🔄 Updated: ${email} → ${sub.status}`);
         break;
       }
+
+      default:
+        console.log(`Unhandled event: ${event.type}`);
     }
+
     return res.json({ received: true });
+
   } catch (err) {
-    console.error("Webhook error:", err.message);
+    console.error("Webhook handler error:", err.message);
     return res.status(500).send("Webhook handler failed");
   }
 });
@@ -153,7 +189,8 @@ exports.cancelSubscription = functions.https.onRequest((req, res) => {
         cancel_at_period_end: true,
       });
       await db.collection("subscriptions").doc(email).set({
-        status: "cancelling", updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: "cancelling",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
       return res.status(200).json({ success: true });
     } catch (err) {
