@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "condo-super-app",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "CLAUDE.md"
+    ]
+  }
+}
