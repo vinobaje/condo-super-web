@@ -250,3 +250,19 @@ git push https://TOKEN@github.com/vinobaje/condo-super-web.git main
 - Contact: https://condosuper.app/support.html#contact
 - Privacy: https://condosuper.app/privacy.html
 - Terms: https://condosuper.app/terms.html
+
+---
+
+## Stripe Integration
+- **Type**: Embedded payment form (Stripe Elements — no redirects)
+- **Backend**: Firebase Cloud Functions (`functions/index.js`)
+- **Setup guide**: `STRIPE_SETUP.md`
+- **Keys to replace in index.html**:
+  - `pk_live_YOUR_PUBLISHABLE_KEY_HERE` → your Stripe publishable key
+  - `https://us-central1-condo-super.cloudfunctions.net` → already correct for condo-super project
+- **Cloud Functions**:
+  - `createPaymentIntent` — creates Stripe subscription, returns clientSecret
+  - `stripeWebhook` — handles Stripe events, updates Firestore
+  - `getSubscriptionStatus` — checks if email has active subscription
+  - `cancelSubscription` — cancels at period end
+- **Firestore collection**: `subscriptions/{email}`
