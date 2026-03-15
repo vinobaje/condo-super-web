@@ -22,16 +22,16 @@ const STRIPE_WEBHOOK_SECRET = functions.config().stripe?.webhook_secret || "whse
 //   stripe.prices.enterprise_yearly="price_..."
 const PRICES = {
   starter: {
-    monthly: functions.config().stripe?.prices?.starter_monthly || "price_STARTER_MONTHLY",
-    yearly:  functions.config().stripe?.prices?.starter_yearly  || "price_STARTER_YEARLY",
+    monthly: functions.config().stripe?.prices?.starter_monthly || "price_1TB3pp0nNg9OZ0P5mADcQ6jn",
+    yearly:  functions.config().stripe?.prices?.starter_yearly  || "price_1TB3pp0nNg9OZ0P5npjzQty0",
   },
   professional: {
-    monthly: functions.config().stripe?.prices?.pro_monthly     || "price_PRO_MONTHLY",
-    yearly:  functions.config().stripe?.prices?.pro_yearly      || "price_PRO_YEARLY",
+    monthly: functions.config().stripe?.prices?.pro_monthly     || "price_1TB3qI0nNg9OZ0P5ovYi65IB",
+    yearly:  functions.config().stripe?.prices?.pro_yearly      || "price_1TB3qh0nNg9OZ0P5ybbyqX5i",
   },
   enterprise: {
-    monthly: functions.config().stripe?.prices?.ent_monthly     || "price_ENT_MONTHLY",
-    yearly:  functions.config().stripe?.prices?.ent_yearly      || "price_ENT_YEARLY",
+    monthly: functions.config().stripe?.prices?.ent_monthly     || "price_1TB3rD0nNg9OZ0P5yigJli5u",
+    yearly:  functions.config().stripe?.prices?.ent_yearly      || "price_1TB3rd0nNg9OZ0P5QcM0esit",
   },
 };
 

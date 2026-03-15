@@ -606,6 +606,14 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
 
   <script>
   var currentBillingMode = 'monthly';
+var PRICE_LABELS = {
+  starter:      { monthly: '$49.00/month',  yearly: '$39.20/month' },
+  professional: { monthly: '$149.00/month', yearly: '$119.20/month' },
+  enterprise:   { monthly: '$249.00/month', yearly: '$199.20/month' },
+};
+function getPriceLabel(plan) {
+  return PRICE_LABELS[plan][currentBillingMode];
+}
 function setPricing(mode) {
   currentBillingMode = mode;
     const monthly = {starter: '$49.00', pro: '$149.00', ent: '$249.00'};
