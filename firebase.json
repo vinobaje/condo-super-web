@@ -1,13 +1,14 @@
 {
   "hosting": {
-    "site": "condo-super-app-web",
+    "site": "condo-super-app",
     "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "CLAUDE.md",
       "STRIPE_SETUP.md",
-      "functions/**"
+      "functions/**",
+      "SET_FIREBASE_CONFIG.sh"
     ]
   },
   "functions": {
