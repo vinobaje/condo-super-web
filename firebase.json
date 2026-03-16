@@ -5,7 +5,12 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "CLAUDE.md"
+      "CLAUDE.md",
+      "STRIPE_SETUP.md",
+      "functions/**"
     ]
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

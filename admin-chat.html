@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Chat — Condo Super Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#F0F0F0;color:#1a1a2e}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:320px 1fr;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{background:#1a1a2e;display:flex;flex-direction:column;overflow:hidden}
+.sidebar-header{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sidebar-title{font-size:17px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.online-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sidebar-sub{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.notif-count{background:#FF5722;color:#fff;border-radius:99px;padding:2px 8px;font-size:12px;font-weight:700}
+
+.conv-search{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.conv-search input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:13px;color:#fff;outline:none;font-family:inherit}
+.conv-search input::placeholder{color:rgba(255,255,255,.35)}
+.conv-search input:focus{border-color:rgba(255,87,34,.5)}
+
+.conv-list{flex:1;overflow-y:auto;padding:8px 0}
+.conv-list::-webkit-scrollbar{width:4px}
+.conv-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px}
+
+.conv-item{padding:14px 16px;cursor:pointer;border-left:3px solid transparent;transition:background .15s;position:relative}
+.conv-item:hover{background:rgba(255,255,255,.06)}
+.conv-item.active{background:rgba(255,87,34,.12);border-left-color:#FF5722}
+.conv-item.unread .conv-name{color:#fff;font-weight:600}
+.conv-item.unread::after{content:'';width:8px;height:8px;border-radius:50%;background:#FF5722;position:absolute;top:16px;right:14px}
+.conv-name{font-size:14px;font-weight:500;color:rgba(255,255,255,.85);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px}
+.conv-preview{font-size:12px;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-time{font-size:11px;color:rgba(255,255,255,.3);margin-top:3px}
+.conv-status{display:inline-block;font-size:10px;padding:2px 7px;border-radius:99px;font-weight:600;margin-top:4px}
+.conv-status.open{background:rgba(74,222,128,.15);color:#4ade80}
+.conv-status.closed{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)}
+.empty-convs{text-align:center;padding:48px 24px;color:rgba(255,255,255,.3);font-size:14px}
+.empty-convs .icon{font-size:36px;margin-bottom:12px}
+
+/* ── CHAT MAIN ── */
+.chat-main{display:flex;flex-direction:column;overflow:hidden;background:#fff}
+.chat-header{padding:16px 24px;border-bottom:1px solid #EEEEEA;display:flex;align-items:center;gap:14px;flex-shrink:0;background:#fff}
+.chat-header-avatar{width:42px;height:42px;border-radius:50%;background:#FFF3EE;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:700;color:#FF5722}
+.chat-header-info{flex:1}
+.chat-header-name{font-size:16px;font-weight:600;color:#1a1a2e}
+.chat-header-email{font-size:13px;color:#888;margin-top:2px}
+.chat-header-page{font-size:11px;color:#bbb;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.chat-header-actions{display:flex;gap:8px}
+.hdr-btn{background:#F5F5F0;border:1px solid #EEEEEA;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;color:#1a1a2e;transition:background .2s}
+.hdr-btn:hover{background:#EEEEEA}
+.hdr-btn.danger{color:#DC2626;border-color:#FECACA;background:#FFF5F5}
+.hdr-btn.danger:hover{background:#FEE2E2}
+
+.chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;background:#F8F8F5}
+.chat-messages::-webkit-scrollbar{width:5px}
+.chat-messages::-webkit-scrollbar-thumb{background:#ddd;border-radius:99px}
+
+.msg-row{display:flex;flex-direction:column;gap:4px}
+.msg-row.visitor{align-items:flex-end}
+.msg-row.agent{align-items:flex-start}
+.msg-bubble{padding:10px 16px;border-radius:16px;font-size:14px;line-height:1.55;max-width:70%;word-break:break-word}
+.msg-row.visitor .msg-bubble{background:#FF5722;color:#fff;border-bottom-right-radius:4px}
+.msg-row.agent   .msg-bubble{background:#fff;color:#1a1a2e;border:1px solid #EEEEEA;border-bottom-left-radius:4px}
+.msg-meta{font-size:11px;color:#bbb;padding:0 4px}
+.system-msg{text-align:center;font-size:12px;color:#bbb;padding:2px 0}
+
+.chat-footer{padding:16px 24px;border-top:1px solid #EEEEEA;background:#fff;flex-shrink:0}
+.reply-box{display:flex;gap:10px;align-items:flex-end}
+.reply-input{flex:1;border:1.5px solid #E5E5DC;border-radius:12px;padding:11px 16px;font-size:14px;outline:none;resize:none;font-family:inherit;max-height:120px;min-height:44px;transition:border .2s;color:#1a1a2e;line-height:1.5}
+.reply-input:focus{border-color:#FF5722}
+.reply-send{background:#FF5722;color:#fff;border:none;border-radius:10px;width:42px;height:42px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
+.reply-send:hover{background:#E64A19}
+.reply-send:disabled{background:#ccc;cursor:not-allowed}
+.quick-replies{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.qr-btn{background:#F5F5F0;border:1px solid #EEEEEA;border-radius:99px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:#555;transition:background .2s;white-space:nowrap}
+.qr-btn:hover{background:#EEEEEA;color:#1a1a2e}
+
+/* ── EMPTY STATE ── */
+.no-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F8F8F5;color:#bbb;text-align:center;padding:48px}
+.no-chat .icon{font-size:48px;margin-bottom:16px}
+.no-chat h3{font-size:18px;font-weight:600;color:#999;margin-bottom:8px}
+.no-chat p{font-size:14px;line-height:1.6}
+
+/* ── LOGIN ── */
+.login-screen{position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-card{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:380px;text-align:center}
+.login-logo{font-size:36px;margin-bottom:16px}
+.login-title{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+.login-sub{font-size:14px;color:#888;margin-bottom:28px}
+.login-input{width:100%;padding:12px 16px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;margin-bottom:12px;color:#1a1a2e;transition:border .2s}
+.login-input:focus{border-color:#FF5722}
+.login-btn{width:100%;background:#FF5722;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s}
+.login-btn:hover{background:#E64A19}
+.login-error{color:#DC2626;font-size:13px;margin-top:8px;display:none}
+
+/* ── SOUND TOGGLE ── */
+.sound-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;color:rgba(255,255,255,.6);font-family:inherit}
+.sound-btn:hover{background:rgba(255,255,255,.12)}
+
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .sidebar.mobile-open{display:flex;position:fixed;inset:0;z-index:100}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🏢</div>
+    <div class="login-title">Condo Super</div>
+    <div class="login-sub">Live Chat Admin Dashboard</div>
+    <input class="login-input" type="password" id="admin-password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" onclick="login()">Sign In</button>
+    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="main-app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="sidebar-title">
+          <span class="online-dot"></span>
+          Live Chats
+          <span class="notif-count" id="total-count">0</span>
+        </div>
+        <div class="sidebar-sub">Condo Super Support</div>
+      </div>
+      <button class="sound-btn" id="sound-btn" onclick="toggleSound()" title="Toggle notification sound">🔔</button>
+    </div>
+
+    <div class="conv-search">
+      <input type="text" placeholder="Search conversations..." oninput="filterConvs(this.value)" id="conv-search">
+    </div>
+
+    <div class="conv-list" id="conv-list">
+      <div class="empty-convs">
+        <div class="icon">💬</div>
+        <div>No conversations yet</div>
+        <div style="font-size:12px;margin-top:6px">Waiting for visitors...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT MAIN -->
+  <div class="chat-main" id="chat-main">
+
+    <!-- HEADER -->
+    <div class="chat-header" id="chat-header" style="display:none">
+      <div class="chat-header-avatar" id="hdr-avatar">?</div>
+      <div class="chat-header-info">
+        <div class="chat-header-name" id="hdr-name">—</div>
+        <div class="chat-header-email" id="hdr-email">—</div>
+        <div class="chat-header-page" id="hdr-page">—</div>
+      </div>
+      <div class="chat-header-actions">
+        <button class="hdr-btn" onclick="closeConversation()">✓ Close</button>
+        <button class="hdr-btn danger" onclick="deleteConversation()">✕ Delete</button>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="no-chat" id="no-chat">
+      <div class="icon">💬</div>
+      <h3>No conversation selected</h3>
+      <p>Pick a conversation from the left sidebar to start replying.<br>New chats will appear automatically.</p>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="chat-messages" id="chat-messages" style="display:none"></div>
+
+    <!-- FOOTER -->
+    <div class="chat-footer" id="chat-footer" style="display:none">
+      <div class="quick-replies">
+        <button class="qr-btn" onclick="quickReply('Hi! Thanks for reaching out. How can I help you today?')">👋 Greeting</button>
+        <button class="qr-btn" onclick="quickReply('Thanks for your patience! I\\'ll look into that for you right away.')">⏳ On it</button>
+        <button class="qr-btn" onclick="quickReply('You can download Condo Super on the App Store or Google Play — it\\'s free to get started!')">📱 Download</button>
+        <button class="qr-btn" onclick="quickReply('Is there anything else I can help you with?')">✅ Anything else?</button>
+        <button class="qr-btn" onclick="quickReply('Please email us at info@condosuper.app for further assistance and we\\'ll get back to you within 24 hours.')">✉️ Email us</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-input" id="reply-input" rows="1" placeholder="Type your reply..." onkeydown="handleReplyKey(event)"></textarea>
+        <button class="reply-send" id="reply-send-btn" onclick="sendReply()">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const FB_URL       = 'https://condo-super-default-rtdb.firebaseio.com';
+const ADMIN_PASS   = 'CondoSuper2024!'; // Change this password!
+const AGENT_NAME   = 'Vino';
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let conversations  = {};
+let activeSession  = null;
+let msgPollTimer   = null;
+let convPollTimer  = null;
+let lastMsgCount   = 0;
+let soundEnabled   = true;
+let searchQuery    = '';
+
+// ─── LOGIN ───────────────────────────────────────────────────────────────────
+function login() {
+  const pw = document.getElementById('admin-password').value;
+  if (pw === ADMIN_PASS) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'grid';
+    startConvPolling();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('admin-password').style.borderColor = '#DC2626';
+    setTimeout(() => {
+      document.getElementById('admin-password').style.borderColor = '#E5E5DC';
+      document.getElementById('login-error').style.display = 'none';
+    }, 3000);
+  }
+}
+
+// ─── FIREBASE ────────────────────────────────────────────────────────────────
+async function fbGet(path) {
+  try {
+    const r = await fetch(`${FB_URL}/${path}.json`);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+async function fbSet(path, data) {
+  try { await fetch(`${FB_URL}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch{}
+}
+async function fbPush(path, data) {
+  try { await fetch(`${FB_URL}/${path}.json`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch{}
+}
+async function fbDelete(path) {
+  try { await fetch(`${FB_URL}/${path}.json`, { method:'DELETE' }); } catch{}
+}
+
+// ─── POLL CONVERSATIONS ───────────────────────────────────────────────────────
+async function startConvPolling() {
+  await loadConversations();
+  convPollTimer = setInterval(loadConversations, 3000);
+}
+
+async function loadConversations() {
+  const data = await fbGet('chats');
+  if (!data) {
+    renderConvList({});
+    return;
+  }
+  const prevConvs = { ...conversations };
+  conversations = data;
+
+  // Check for new conversations
+  Object.entries(data).forEach(([id, conv]) => {
+    if (!prevConvs[id] && conv.status === 'open') {
+      playNotification();
+    }
+  });
+
+  renderConvList(data);
+
+  // Reload active chat if open
+  if (activeSession && data[activeSession]) {
+    loadMessages(activeSession);
+  }
+}
+
+function renderConvList(data) {
+  const list  = document.getElementById('conv-list');
+  const query = searchQuery.toLowerCase();
+
+  const items = Object.entries(data)
+    .filter(([, c]) => {
+      if (!query) return true;
+      return (c.visitorName || '').toLowerCase().includes(query) ||
+             (c.visitorEmail || '').toLowerCase().includes(query);
+    })
+    .sort(([, a], [, b]) => new Date(b.startedAt) - new Date(a.startedAt));
+
+  const openCount = Object.values(data).filter(c => c.status === 'open' && c.unreadByAgent).length;
+  document.getElementById('total-count').textContent = Object.keys(data).length;
+
+  if (items.length === 0) {
+    list.innerHTML = `<div class="empty-convs"><div class="icon">💬</div><div>No conversations yet</div><div style="font-size:12px;margin-top:6px">Waiting for visitors...</div></div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(([id, conv]) => {
+    const isActive  = id === activeSession;
+    const isUnread  = conv.unreadByAgent && conv.status === 'open';
+    const initials  = (conv.visitorName || '?').charAt(0).toUpperCase();
+    const time      = conv.lastMessage?.timestamp
+      ? new Date(conv.lastMessage.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+      : new Date(conv.startedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const preview   = conv.lastMessage?.text || 'Started a conversation';
+    const statusCls = conv.status === 'open' ? 'open' : 'closed';
+    const statusLbl = conv.status === 'open' ? '● Open' : '○ Closed';
+
+    return `
+      <div class="conv-item ${isActive ? 'active' : ''} ${isUnread ? 'unread' : ''}" onclick="selectConv('${id}')">
+        <div class="conv-name">${escHtml(conv.visitorName || 'Unknown')}</div>
+        <div class="conv-preview">${escHtml(preview.substring(0, 50))}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <span class="conv-status ${statusCls}">${statusLbl}</span>
+          <span class="conv-time">${time}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── SELECT CONVERSATION ─────────────────────────────────────────────────────
+async function selectConv(sessionId) {
+  activeSession = sessionId;
+  lastMsgCount  = 0;
+  if (msgPollTimer) clearInterval(msgPollTimer);
+
+  const conv = conversations[sessionId];
+  if (!conv) return;
+
+  // Mark as read
+  await fbSet(`chats/${sessionId}/unreadByAgent`, false);
+
+  // Update header
+  document.getElementById('chat-header').style.display   = 'flex';
+  document.getElementById('no-chat').style.display       = 'none';
+  document.getElementById('chat-messages').style.display = 'flex';
+  document.getElementById('chat-footer').style.display   = conv.status === 'open' ? 'block' : 'none';
+
+  const initials = (conv.visitorName || '?').charAt(0).toUpperCase();
+  document.getElementById('hdr-avatar').textContent  = initials;
+  document.getElementById('hdr-name').textContent    = conv.visitorName || 'Unknown';
+  document.getElementById('hdr-email').textContent   = conv.visitorEmail || '';
+  document.getElementById('hdr-page').textContent    = '📍 ' + (conv.page || '');
+
+  // Re-render list to update active state
+  renderConvList(conversations);
+
+  await loadMessages(sessionId);
+  msgPollTimer = setInterval(() => loadMessages(sessionId), 2000);
+}
+
+// ─── LOAD MESSAGES ────────────────────────────────────────────────────────────
+async function loadMessages(sessionId) {
+  const msgs = await fbGet(`chats/${sessionId}/messages`);
+  const body = document.getElementById('chat-messages');
+  if (!body) return;
+
+  const all = msgs ? Object.values(msgs).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)) : [];
+
+  if (all.length !== lastMsgCount) {
+    lastMsgCount = all.length;
+    body.innerHTML = '';
+
+    const conv = conversations[sessionId];
+    body.innerHTML += `<div class="system-msg">Chat started · ${new Date(conv?.startedAt).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}</div>`;
+
+    all.forEach(m => {
+      const time = new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const cls  = m.sender === 'visitor' ? 'visitor' : 'agent';
+      const name = m.sender === 'visitor' ? (m.senderName || 'Visitor') : (m.senderName || AGENT_NAME);
+      body.innerHTML += `
+        <div class="msg-row ${cls}">
+          <div class="msg-bubble">${escHtml(m.text)}</div>
+          <div class="msg-meta">${escHtml(name)} · ${time}</div>
+        </div>`;
+    });
+    scrollMessages();
+  }
+}
+
+// ─── SEND REPLY ───────────────────────────────────────────────────────────────
+async function sendReply() {
+  const input = document.getElementById('reply-input');
+  const text  = input.value.trim();
+  if (!text || !activeSession) return;
+
+  input.value = '';
+  const msg = {
+    text, sender: 'agent', senderName: AGENT_NAME,
+    timestamp: new Date().toISOString(),
+  };
+
+  await fbPush(`chats/${activeSession}/messages`, msg);
+  await fbSet(`chats/${activeSession}/lastMessage`, { text, timestamp: msg.timestamp });
+  await fbSet(`chats/${activeSession}/unreadByVisitor`, true);
+  await loadMessages(activeSession);
+}
+
+function quickReply(text) {
+  const input = document.getElementById('reply-input');
+  input.value = text;
+  input.focus();
+}
+
+function handleReplyKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendReply();
+  }
+}
+
+// ─── CLOSE / DELETE ───────────────────────────────────────────────────────────
+async function closeConversation() {
+  if (!activeSession) return;
+  await fbSet(`chats/${activeSession}/status`, 'closed');
+  conversations[activeSession].status = 'closed';
+  document.getElementById('chat-footer').style.display = 'none';
+  renderConvList(conversations);
+}
+
+async function deleteConversation() {
+  if (!activeSession || !confirm('Delete this conversation? This cannot be undone.')) return;
+  await fbDelete(`chats/${activeSession}`);
+  delete conversations[activeSession];
+  activeSession = null;
+  document.getElementById('chat-header').style.display   = 'none';
+  document.getElementById('chat-messages').style.display = 'none';
+  document.getElementById('chat-footer').style.display   = 'none';
+  document.getElementById('no-chat').style.display       = 'flex';
+  renderConvList(conversations);
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+function playNotification() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('sound-btn').textContent = soundEnabled ? '🔔' : '🔕';
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function filterConvs(q) {
+  searchQuery = q;
+  renderConvList(conversations);
+}
+
+function scrollMessages() {
+  const body = document.getElementById('chat-messages');
+  if (body) setTimeout(() => body.scrollTop = body.scrollHeight, 50);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-focus password on load
+window.onload = () => document.getElementById('admin-password')?.focus();
+</script>
+</body>
+</html>
