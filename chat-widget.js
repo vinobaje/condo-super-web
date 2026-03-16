@@ -1,404 +1,218 @@
 /*!
  * Condo Super Live Chat Widget
- * Powered by Firebase Realtime Database
- * Drop this script on any page to enable live chat
+ * AI-powered with seamless live chat escalation
  */
 (function() {
   'use strict';
 
-  // ─── CONFIG ────────────────────────────────────────────────────────────────
-  const FB_URL = 'https://condo-super-default-rtdb.firebaseio.com'; // Firebase Realtime DB URL
-  const BRAND  = { name: 'Condo Super', color: '#FF5722', navy: '#1a1a2e' };
+  const FB_URL        = 'https://condo-super-default-rtdb.firebaseio.com';
+  const CHATBOT_URL   = 'https://us-central1-condo-super.cloudfunctions.net/chatbot';
+  const BRAND         = { color: '#FF5722', navy: '#1a1a2e' };
 
-  // ─── STATE ─────────────────────────────────────────────────────────────────
+  let mode         = 'ai';
   let sessionId    = null;
   let pollInterval = null;
   let lastMsgCount = 0;
   let isOpen       = false;
   let visitorName  = '';
   let visitorEmail = '';
-  let step         = 'intro'; // intro → chat
+  let aiHistory    = [];
+  let step         = 'intro';
 
-  // ─── SESSION ID ────────────────────────────────────────────────────────────
   function getSessionId() {
-    let id = sessionStorage.getItem('cs_chat_session');
-    if (!id) {
-      id = 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('cs_chat_session', id);
-    }
+    let id = sessionStorage.getItem('cs_session');
+    if (!id) { id = 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2,9); sessionStorage.setItem('cs_session', id); }
     return id;
   }
 
-  // ─── FIREBASE HELPERS ──────────────────────────────────────────────────────
-  async function fbPush(path, data) {
-    try {
-      const res = await fetch(`${FB_URL}/${path}.json`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      return res.ok;
-    } catch(e) { return false; }
-  }
+  async function fbSet(path, data) { try { await fetch(`${FB_URL}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch(e){} }
+  async function fbPush(path, data) { try { await fetch(`${FB_URL}/${path}.json`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch(e){} }
+  async function fbGet(path) { try { const r = await fetch(`${FB_URL}/${path}.json`); return r.ok ? await r.json() : null; } catch(e){ return null; } }
 
-  async function fbSet(path, data) {
-    try {
-      await fetch(`${FB_URL}/${path}.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-    } catch(e) {}
-  }
-
-  async function fbGet(path) {
-    try {
-      const res = await fetch(`${FB_URL}/${path}.json`);
-      return res.ok ? await res.json() : null;
-    } catch(e) { return null; }
-  }
-
-  // ─── STYLES ────────────────────────────────────────────────────────────────
   function injectStyles() {
-    const css = `
-      #cs-chat-bubble {
-        position: fixed; bottom: 24px; right: 24px; z-index: 99999;
-        width: 56px; height: 56px; border-radius: 50%;
-        background: ${BRAND.color}; border: none; cursor: pointer;
-        box-shadow: 0 4px 20px rgba(255,87,34,.45);
-        display: flex; align-items: center; justify-content: center;
-        transition: transform .2s, box-shadow .2s;
-        font-size: 24px;
-      }
-      #cs-chat-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(255,87,34,.55); }
-      #cs-chat-bubble .cs-badge {
-        position: absolute; top: -4px; right: -4px;
-        background: #16A34A; color: #fff; border-radius: 99px;
-        font-size: 10px; font-weight: 700; padding: 2px 6px;
-        font-family: -apple-system, sans-serif; line-height: 1.4;
-        border: 2px solid #fff; display: none;
-      }
-      #cs-chat-window {
-        position: fixed; bottom: 92px; right: 24px; z-index: 99998;
-        width: 360px; height: 520px; border-radius: 20px;
-        background: #fff; box-shadow: 0 12px 48px rgba(0,0,0,.2);
-        display: none; flex-direction: column; overflow: hidden;
-        font-family: -apple-system, 'Inter', sans-serif;
-        border: 1px solid rgba(0,0,0,.08);
-        animation: csSlideUp .25s ease;
-      }
-      @keyframes csSlideUp {
-        from { opacity: 0; transform: translateY(16px) scale(.97); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      #cs-chat-header {
-        background: ${BRAND.navy}; padding: 16px 20px;
-        display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-      }
-      .cs-avatar {
-        width: 40px; height: 40px; border-radius: 50%;
-        background: ${BRAND.color}; display: flex; align-items: center;
-        justify-content: center; font-size: 18px; flex-shrink: 0;
-      }
-      .cs-header-info { flex: 1; }
-      .cs-header-name { font-size: 15px; font-weight: 600; color: #fff; }
-      .cs-header-status { font-size: 12px; color: rgba(255,255,255,.6); display: flex; align-items: center; gap: 5px; margin-top: 2px; }
-      .cs-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: csPulse 2s infinite; }
-      @keyframes csPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-      .cs-close-btn {
-        background: rgba(255,255,255,.1); border: none; color: #fff;
-        width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
-        font-size: 16px; display: flex; align-items: center; justify-content: center;
-        transition: background .2s;
-      }
-      .cs-close-btn:hover { background: rgba(255,255,255,.2); }
-      #cs-chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #F8F8F5; }
-      #cs-chat-body::-webkit-scrollbar { width: 4px; }
-      #cs-chat-body::-webkit-scrollbar-track { background: transparent; }
-      #cs-chat-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 99px; }
-      .cs-msg { max-width: 80%; display: flex; flex-direction: column; gap: 3px; }
-      .cs-msg.cs-msg-visitor { align-self: flex-end; align-items: flex-end; }
-      .cs-msg.cs-msg-agent   { align-self: flex-start; align-items: flex-start; }
-      .cs-msg-bubble {
-        padding: 9px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5;
-        word-break: break-word;
-      }
-      .cs-msg-visitor .cs-msg-bubble { background: ${BRAND.color}; color: #fff; border-bottom-right-radius: 4px; }
-      .cs-msg-agent   .cs-msg-bubble { background: #fff; color: #1a1a2e; border: 1px solid #EEEEEA; border-bottom-left-radius: 4px; }
-      .cs-msg-time { font-size: 10px; color: #aaa; padding: 0 4px; }
-      .cs-system-msg { text-align: center; font-size: 12px; color: #aaa; padding: 4px 0; }
-      .cs-typing { display: flex; align-items: center; gap: 4px; padding: 10px 14px; background: #fff; border: 1px solid #EEEEEA; border-radius: 16px; border-bottom-left-radius: 4px; width: fit-content; }
-      .cs-typing span { width: 6px; height: 6px; border-radius: 50%; background: #bbb; animation: csTyping 1.2s infinite; }
-      .cs-typing span:nth-child(2) { animation-delay: .2s; }
-      .cs-typing span:nth-child(3) { animation-delay: .4s; }
-      @keyframes csTyping { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
-      #cs-chat-footer {
-        padding: 12px 16px; background: #fff; border-top: 1px solid #EEEEEA;
-        display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
-      }
-      #cs-chat-input {
-        flex: 1; border: 1.5px solid #E5E5DC; border-radius: 12px;
-        padding: 10px 14px; font-size: 14px; outline: none; resize: none;
-        font-family: inherit; max-height: 100px; min-height: 40px;
-        transition: border .2s; line-height: 1.5; background: #fff; color: #1a1a2e;
-      }
-      #cs-chat-input:focus { border-color: ${BRAND.color}; }
-      #cs-send-btn {
-        width: 38px; height: 38px; border-radius: 10px; border: none;
-        background: ${BRAND.color}; color: #fff; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0; transition: background .2s; font-size: 16px;
-      }
-      #cs-send-btn:hover { background: #E64A19; }
-      #cs-send-btn:disabled { background: #ccc; cursor: not-allowed; }
-      /* INTRO FORM */
-      #cs-intro { padding: 24px 20px; display: flex; flex-direction: column; gap: 14px; }
-      .cs-intro-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
-      .cs-intro-sub { font-size: 14px; color: #666; line-height: 1.5; margin-top: -6px; }
-      .cs-intro-input {
-        padding: 11px 14px; border: 1.5px solid #E5E5DC; border-radius: 10px;
-        font-size: 14px; outline: none; font-family: inherit; transition: border .2s;
-        color: #1a1a2e; background: #fff;
-      }
-      .cs-intro-input:focus { border-color: ${BRAND.color}; }
-      .cs-start-btn {
-        background: ${BRAND.color}; color: #fff; border: none; border-radius: 10px;
-        padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
-        font-family: inherit; transition: background .2s; margin-top: 4px;
-      }
-      .cs-start-btn:hover { background: #E64A19; }
-      @media(max-width: 400px) {
-        #cs-chat-window { width: calc(100vw - 24px); right: 12px; bottom: 80px; }
-        #cs-chat-bubble { right: 12px; }
-      }
-    `;
-    const style = document.createElement('style');
-    style.textContent = css;
-    document.head.appendChild(style);
+    document.head.insertAdjacentHTML('beforeend', `<style>
+      #cs-bubble{position:fixed;bottom:24px;right:24px;z-index:99999;width:56px;height:56px;border-radius:50%;background:${BRAND.color};border:none;cursor:pointer;box-shadow:0 4px 20px rgba(255,87,34,.45);display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .2s,box-shadow .2s}
+      #cs-bubble:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(255,87,34,.55)}
+      #cs-badge{position:absolute;top:-4px;right:-4px;background:#16A34A;color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:2px 6px;border:2px solid #fff;display:none;font-family:sans-serif;line-height:1.4}
+      #cs-win{position:fixed;bottom:92px;right:24px;z-index:99998;width:360px;height:540px;border-radius:20px;background:#fff;box-shadow:0 12px 48px rgba(0,0,0,.2);display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,'Inter',sans-serif;border:1px solid rgba(0,0,0,.08);animation:csUp .25s ease}
+      @keyframes csUp{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+      #cs-head{padding:14px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+      .ai-mode{background:linear-gradient(135deg,${BRAND.navy},#2d2060)}
+      .live-mode{background:${BRAND.navy}}
+      .cs-av{width:38px;height:38px;border-radius:50%;background:${BRAND.color};display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+      .cs-hi{flex:1}.cs-hn{font-size:14px;font-weight:600;color:#fff}
+      .cs-hs{font-size:11px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:4px;margin-top:2px}
+      .cs-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;animation:csPulse 2s infinite}
+      @keyframes csPulse{0%,100%{opacity:1}50%{opacity:.4}}
+      .cs-x{background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+      .cs-x:hover{background:rgba(255,255,255,.2)}
+      #cs-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#F8F8F5}
+      #cs-body::-webkit-scrollbar{width:3px}
+      #cs-body::-webkit-scrollbar-thumb{background:#ddd;border-radius:99px}
+      .cs-msg{max-width:82%;display:flex;flex-direction:column;gap:3px}
+      .cs-v{align-self:flex-end;align-items:flex-end}.cs-a{align-self:flex-start;align-items:flex-start}
+      .cs-bbl{padding:9px 13px;border-radius:16px;font-size:13.5px;line-height:1.5;word-break:break-word}
+      .cs-v .cs-bbl{background:${BRAND.color};color:#fff;border-bottom-right-radius:4px}
+      .cs-a .cs-bbl{background:#fff;color:#1a1a2e;border:1px solid #EEEEEA;border-bottom-left-radius:4px}
+      .cs-t{font-size:10px;color:#bbb;padding:0 3px}
+      .cs-sys{text-align:center;font-size:11px;color:#bbb;padding:2px 0}
+      .cs-typing{display:flex;align-items:center;gap:3px;padding:9px 13px;background:#fff;border:1px solid #EEEEEA;border-radius:16px;border-bottom-left-radius:4px;width:fit-content}
+      .cs-typing span{width:5px;height:5px;border-radius:50%;background:#bbb;animation:csDot 1.2s infinite}
+      .cs-typing span:nth-child(2){animation-delay:.2s}.cs-typing span:nth-child(3){animation-delay:.4s}
+      @keyframes csDot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+      #cs-foot{padding:10px 14px;background:#fff;border-top:1px solid #EEEEEA;flex-shrink:0}
+      .cs-hbar{display:flex;justify-content:center;margin-bottom:8px}
+      .cs-hbtn{background:none;border:1px solid #E5E5DC;border-radius:99px;padding:5px 14px;font-size:12px;color:#888;cursor:pointer;font-family:inherit;transition:all .2s}
+      .cs-hbtn:hover{border-color:${BRAND.color};color:${BRAND.color}}
+      .cs-irow{display:flex;gap:8px;align-items:flex-end}
+      #cs-inp{flex:1;border:1.5px solid #E5E5DC;border-radius:12px;padding:9px 13px;font-size:14px;outline:none;resize:none;font-family:inherit;max-height:90px;min-height:38px;transition:border .2s;line-height:1.5;color:#1a1a2e;background:#fff}
+      #cs-inp:focus{border-color:${BRAND.color}}
+      #cs-send{width:36px;height:36px;border-radius:9px;border:none;background:${BRAND.color};color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;transition:background .2s}
+      #cs-send:hover{background:#E64A19}#cs-send:disabled{background:#ddd;cursor:not-allowed}
+      #cs-intro{padding:20px;display:flex;flex-direction:column;gap:12px}
+      .cs-ii{font-size:17px;font-weight:700;color:#1a1a2e}.cs-is{font-size:13px;color:#666;line-height:1.5;margin-top:-4px}
+      .cs-in{padding:10px 13px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:14px;outline:none;font-family:inherit;transition:border .2s;color:#1a1a2e;width:100%}
+      .cs-in:focus{border-color:${BRAND.color}}
+      .cs-sb{background:${BRAND.color};color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s;margin-top:2px;width:100%}
+      .cs-sb:hover{background:#E64A19}
+      .cs-ecard{background:#FFF3EE;border:1px solid #FFCCBC;border-radius:12px;padding:12px 14px;font-size:13px;color:#555;line-height:1.6;align-self:stretch;text-align:center}
+      .cs-ecard b{color:${BRAND.color}}
+      @media(max-width:400px){#cs-win{width:calc(100vw - 20px);right:10px;bottom:78px}#cs-bubble{right:10px}}
+    </style>`);
   }
 
-  // ─── BUILD HTML ────────────────────────────────────────────────────────────
   function buildWidget() {
-    // Bubble
-    const bubble = document.createElement('button');
-    bubble.id = 'cs-chat-bubble';
-    bubble.innerHTML = `<span style="font-size:22px">💬</span><span class="cs-badge" id="cs-notif-badge">1</span>`;
-    bubble.onclick = toggleChat;
-    document.body.appendChild(bubble);
-
-    // Window
-    const win = document.createElement('div');
-    win.id = 'cs-chat-window';
-    win.innerHTML = `
-      <div id="cs-chat-header">
-        <div class="cs-avatar">🏢</div>
-        <div class="cs-header-info">
-          <div class="cs-header-name">Condo Super Support</div>
-          <div class="cs-header-status"><span class="cs-status-dot"></span>We typically reply within a few minutes</div>
+    document.body.insertAdjacentHTML('beforeend', `
+      <button id="cs-bubble" onclick="window.__cs.toggle()">💬<span id="cs-badge"></span></button>
+      <div id="cs-win">
+        <div id="cs-head" class="ai-mode">
+          <div class="cs-av">🤖</div>
+          <div class="cs-hi">
+            <div class="cs-hn">Condo Super AI Support</div>
+            <div class="cs-hs"><span class="cs-dot"></span><span id="cs-st">AI-powered · instant answers</span></div>
+          </div>
+          <button class="cs-x" onclick="window.__cs.close()">✕</button>
         </div>
-        <button class="cs-close-btn" onclick="window.__csChat.close()">✕</button>
+        <div id="cs-intro">
+          <div class="cs-ii">👋 Hi there!</div>
+          <div class="cs-is">Ask our AI anything about Condo Super — features, pricing, getting started. We'll connect you to a human if needed.</div>
+          <input class="cs-in" id="cs-name" type="text" placeholder="Your name *"/>
+          <input class="cs-in" id="cs-email" type="email" placeholder="Your email *"/>
+          <input class="cs-in" id="cs-first" type="text" placeholder="What's your question?"/>
+          <button class="cs-sb" onclick="window.__cs.start()">Start Chat →</button>
+        </div>
+        <div id="cs-body" style="display:none"></div>
+        <div id="cs-foot" style="display:none">
+          <div class="cs-hbar" id="cs-hbar">
+            <button class="cs-hbtn" onclick="window.__cs.escalate('manual')">👤 Talk to a human instead</button>
+          </div>
+          <div class="cs-irow">
+            <textarea id="cs-inp" rows="1" placeholder="Type a message..." onkeydown="window.__cs.key(event)"></textarea>
+            <button id="cs-send" onclick="window.__cs.send()">➤</button>
+          </div>
+        </div>
       </div>
-      <div id="cs-intro">
-        <div class="cs-intro-title">👋 Hi there!</div>
-        <div class="cs-intro-sub">Start a conversation — we're here to help with anything about Condo Super.</div>
-        <input class="cs-intro-input" id="cs-visitor-name" type="text" placeholder="Your name *" />
-        <input class="cs-intro-input" id="cs-visitor-email" type="email" placeholder="Your email *" />
-        <input class="cs-intro-input" id="cs-first-msg" type="text" placeholder="How can we help you?" />
-        <button class="cs-start-btn" onclick="window.__csChat.startChat()">Start Chat →</button>
-      </div>
-      <div id="cs-chat-body" style="display:none"></div>
-      <div id="cs-chat-footer" style="display:none">
-        <textarea id="cs-chat-input" rows="1" placeholder="Type a message..." onkeydown="window.__csChat.handleKey(event)"></textarea>
-        <button id="cs-send-btn" onclick="window.__csChat.send()">➤</button>
-      </div>
-    `;
-    document.body.appendChild(win);
+    `);
   }
 
-  // ─── CHAT FUNCTIONS ────────────────────────────────────────────────────────
-  function toggleChat() {
-    isOpen ? closeChat() : openChat();
-  }
-
-  function openChat() {
+  function toggle() { isOpen ? close() : open(); }
+  function open() {
     isOpen = true;
-    document.getElementById('cs-chat-window').style.display = 'flex';
-    document.getElementById('cs-notif-badge').style.display = 'none';
-    if (step === 'chat') {
-      document.getElementById('cs-chat-input').focus();
-      scrollToBottom();
-    } else {
-      setTimeout(() => document.getElementById('cs-visitor-name')?.focus(), 100);
-    }
+    document.getElementById('cs-win').style.display = 'flex';
+    document.getElementById('cs-badge').style.display = 'none';
+    if (step === 'chat') { document.getElementById('cs-inp')?.focus(); scrollBottom(); }
+    else setTimeout(() => document.getElementById('cs-name')?.focus(), 100);
   }
+  function close() { isOpen = false; document.getElementById('cs-win').style.display = 'none'; }
 
-  function closeChat() {
-    isOpen = false;
-    document.getElementById('cs-chat-window').style.display = 'none';
-  }
-
-  async function startChat() {
-    const name  = document.getElementById('cs-visitor-name').value.trim();
-    const email = document.getElementById('cs-visitor-email').value.trim();
-    const msg   = document.getElementById('cs-first-msg').value.trim();
-
-    if (!name)  { highlight('cs-visitor-name'); return; }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { highlight('cs-visitor-email'); return; }
-
-    visitorName  = name;
-    visitorEmail = email;
-    sessionId    = getSessionId();
-
-    // Create session in Firebase
-    await fbSet(`chats/${sessionId}`, {
-      visitorName, visitorEmail,
-      page: window.location.href,
-      startedAt: new Date().toISOString(),
-      status: 'open',
-      unreadByAgent: true,
-    });
-
-    // Switch to chat view
-    document.getElementById('cs-intro').style.display        = 'none';
-    document.getElementById('cs-chat-body').style.display    = 'flex';
-    document.getElementById('cs-chat-footer').style.display  = 'flex';
+  async function start() {
+    const name  = document.getElementById('cs-name').value.trim();
+    const email = document.getElementById('cs-email').value.trim();
+    const first = document.getElementById('cs-first').value.trim();
+    if (!name)  { hl('cs-name'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { hl('cs-email'); return; }
+    visitorName = name; visitorEmail = email; sessionId = getSessionId();
+    document.getElementById('cs-intro').style.display = 'none';
+    document.getElementById('cs-body').style.display  = 'flex';
+    document.getElementById('cs-foot').style.display  = 'block';
     step = 'chat';
-
-    // Add welcome system message
-    addSystemMsg('Chat started • ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
-
-    // Send first message if provided
-    if (msg) {
-      await sendMessage(msg);
-    } else {
-      addAgentMsg("Hi " + name.split(' ')[0] + "! 👋 How can we help you today?", 'Condo Super');
-    }
-
-    startPolling();
-    document.getElementById('cs-chat-input').focus();
+    addSys('Chat started · ' + now());
+    if (first) await handleMsg(first);
+    else addAgent("Hi " + name.split(' ')[0] + "! 👋 I'm Condo Super AI Support. Ask me anything about our app — features, pricing, getting started, and more!", true);
   }
 
-  async function sendMessage(text) {
-    if (!text.trim() || !sessionId) return;
-    const input = document.getElementById('cs-chat-input');
-    if (input) input.value = '';
+  function send() { const i = document.getElementById('cs-inp'); const t = i?.value.trim(); if (!t) return; i.value = ''; handleMsg(t); }
+  function key(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
 
-    const msg = {
-      text: text.trim(),
-      sender: 'visitor',
-      senderName: visitorName,
-      timestamp: new Date().toISOString(),
-    };
+  async function handleMsg(text) {
+    addVisitor(text);
+    if (mode === 'live') { await liveMsg(text); return; }
+    aiHistory.push({ role: 'user', content: text });
+    const typ = showTyping();
+    try {
+      const res  = await fetch(CHATBOT_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ messages: aiHistory }) });
+      const data = await res.json();
+      removeTyping(typ);
+      if (data.error) { addAgent("I'm having trouble right now. Let me connect you with our support team.", true); setTimeout(() => escalate('error'), 1500); return; }
+      aiHistory.push({ role: 'assistant', content: data.reply });
+      addAgent(data.reply, true);
+      if (data.escalate) setTimeout(() => escalate('ai'), 1500);
+    } catch(e) { removeTyping(typ); addAgent("I'm having connectivity issues. Let me connect you with our support team.", true); setTimeout(() => escalate('error'), 1500); }
+  }
 
-    addVisitorMsg(text.trim());
-    await fbPush(`chats/${sessionId}/messages`, msg);
-    await fbSet(`chats/${sessionId}/lastMessage`, { text: text.trim(), timestamp: msg.timestamp });
+  async function escalate(reason) {
+    if (mode === 'live') return;
+    mode = 'live';
+    document.getElementById('cs-head').className = 'live-mode';
+    document.querySelector('.cs-av').textContent  = '🏢';
+    document.querySelector('.cs-hn').textContent  = 'Condo Super Support';
+    document.getElementById('cs-st').textContent  = 'Live support · connecting you now';
+    document.getElementById('cs-hbar').style.display = 'none';
+    addSys('── Connecting to support team ──');
+    const msg = reason === 'manual'
+      ? "You've requested to speak with our support team. We'll reply to your email at <b>" + esc(visitorEmail) + "</b> if you close this chat."
+      : "I'll connect you with our support team who can help with this. We'll reply shortly.";
+    body().insertAdjacentHTML('beforeend', `<div class="cs-ecard">🧑‍💼 ${msg}</div>`);
+    scrollBottom();
+    await fbSet(`chats/${sessionId}`, { visitorName, visitorEmail, page: window.location.href, startedAt: new Date().toISOString(), status: 'open', unreadByAgent: true, escalatedFrom: 'ai', escalateReason: reason });
+    for (const m of aiHistory) {
+      await fbPush(`chats/${sessionId}/messages`, { text: m.content, sender: m.role === 'user' ? 'visitor' : 'agent', senderName: m.role === 'user' ? visitorName : 'Condo Super AI', timestamp: new Date().toISOString(), isAiMessage: m.role === 'assistant' });
+    }
+    startPolling();
+    addSys('Support team notified · we\'ll reply shortly');
+  }
+
+  async function liveMsg(text) {
+    await fbPush(`chats/${sessionId}/messages`, { text, sender: 'visitor', senderName: visitorName, timestamp: new Date().toISOString() });
+    await fbSet(`chats/${sessionId}/lastMessage`, { text, timestamp: new Date().toISOString() });
     await fbSet(`chats/${sessionId}/unreadByAgent`, true);
   }
 
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      window.__csChat.send();
-    }
-  }
-
-  function send() {
-    const input = document.getElementById('cs-chat-input');
-    if (input && input.value.trim()) sendMessage(input.value.trim());
-  }
-
-  // ─── POLLING FOR AGENT REPLIES ─────────────────────────────────────────────
   function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(async () => {
       if (!sessionId) return;
       const msgs = await fbGet(`chats/${sessionId}/messages`);
       if (!msgs) return;
-      const all = Object.values(msgs);
-      if (all.length > lastMsgCount) {
-        const newMsgs = all.slice(lastMsgCount);
-        newMsgs.forEach(m => {
-          if (m.sender === 'agent') {
-            addAgentMsg(m.text, m.senderName || 'Support');
-            if (!isOpen) showNotification();
-          }
-        });
-        lastMsgCount = all.length;
+      const agentMsgs = Object.values(msgs).filter(m => m.sender === 'agent' && !m.isAiMessage);
+      if (agentMsgs.length > lastMsgCount) {
+        agentMsgs.slice(lastMsgCount).forEach(m => { addAgent(m.text, false); if (!isOpen) document.getElementById('cs-badge').style.display = 'block'; });
+        lastMsgCount = agentMsgs.length;
       }
-    }, 2000); // Poll every 2 seconds
+    }, 2000);
   }
 
-  // ─── UI HELPERS ────────────────────────────────────────────────────────────
-  function addVisitorMsg(text) {
-    const body = document.getElementById('cs-chat-body');
-    const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const el = document.createElement('div');
-    el.className = 'cs-msg cs-msg-visitor';
-    el.innerHTML = `<div class="cs-msg-bubble">${escHtml(text)}</div><div class="cs-msg-time">${time}</div>`;
-    body.appendChild(el);
-    scrollToBottom();
-    lastMsgCount++;
-  }
+  function addVisitor(t) { body().insertAdjacentHTML('beforeend', `<div class="cs-msg cs-v"><div class="cs-bbl">${esc(t)}</div><div class="cs-t">${now()}</div></div>`); scrollBottom(); }
+  function addAgent(t, isAI) { body().insertAdjacentHTML('beforeend', `<div class="cs-msg cs-a"><div class="cs-bbl">${esc(t)}</div><div class="cs-t">${isAI ? 'AI Support' : 'Support'} · ${now()}</div></div>`); scrollBottom(); }
+  function addSys(t) { body().insertAdjacentHTML('beforeend', `<div class="cs-sys">${esc(t)}</div>`); scrollBottom(); }
+  function showTyping() { const el = document.createElement('div'); el.className = 'cs-msg cs-a'; el.innerHTML = '<div class="cs-typing"><span></span><span></span><span></span></div>'; body().appendChild(el); scrollBottom(); return el; }
+  function removeTyping(el) { el?.remove(); }
+  function body() { return document.getElementById('cs-body'); }
+  function scrollBottom() { const b = body(); if (b) setTimeout(() => b.scrollTop = b.scrollHeight, 50); }
+  function now() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+  function hl(id) { const el = document.getElementById(id); if (!el) return; el.style.borderColor = '#DC2626'; el.focus(); setTimeout(() => el.style.borderColor = '#E5E5DC', 3000); }
 
-  function addAgentMsg(text, name) {
-    const body = document.getElementById('cs-chat-body');
-    const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const el = document.createElement('div');
-    el.className = 'cs-msg cs-msg-agent';
-    el.innerHTML = `<div class="cs-msg-bubble">${escHtml(text)}</div><div class="cs-msg-time">${name} · ${time}</div>`;
-    body.appendChild(el);
-    scrollToBottom();
-  }
-
-  function addSystemMsg(text) {
-    const body = document.getElementById('cs-chat-body');
-    const el = document.createElement('div');
-    el.className = 'cs-system-msg';
-    el.textContent = text;
-    body.appendChild(el);
-  }
-
-  function scrollToBottom() {
-    const body = document.getElementById('cs-chat-body');
-    if (body) setTimeout(() => body.scrollTop = body.scrollHeight, 50);
-  }
-
-  function showNotification() {
-    const badge = document.getElementById('cs-notif-badge');
-    if (badge) badge.style.display = 'block';
-  }
-
-  function highlight(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.borderColor = '#DC2626';
-    el.focus();
-    setTimeout(() => el.style.borderColor = '#E5E5DC', 3000);
-  }
-
-  function escHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // ─── PUBLIC API ────────────────────────────────────────────────────────────
-  window.__csChat = { open: openChat, close: closeChat, startChat, send, handleKey };
-
-  // ─── INIT ──────────────────────────────────────────────────────────────────
-  function init() {
-    injectStyles();
-    buildWidget();
-    // Restore existing session
-    const existing = sessionStorage.getItem('cs_chat_session');
-    if (existing) {
-      sessionId = existing;
-      // Could restore chat history here if needed
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  window.__cs = { toggle, open, close, start, send, key, escalate };
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', () => { injectStyles(); buildWidget(); }) : (injectStyles(), buildWidget());
 })();

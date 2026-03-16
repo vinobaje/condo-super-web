@@ -198,3 +198,7 @@ exports.cancelSubscription = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+// ─── 5. AI CHATBOT ────────────────────────────────────────────────────────────
+const { chatbot } = require("./chatbot");
+exports.chatbot = chatbot;
