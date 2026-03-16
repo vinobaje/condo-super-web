@@ -7,7 +7,7 @@
   'use strict';
 
   // ─── CONFIG ────────────────────────────────────────────────────────────────
-  const FB_URL = 'https://condo-super-app-web-default-rtdb.firebaseio.com'; // Firebase Realtime DB URL
+  const FB_URL = 'https://condo-super-default-rtdb.firebaseio.com'; // Firebase Realtime DB URL
   const BRAND  = { name: 'Condo Super', color: '#FF5722', navy: '#1a1a2e' };
 
   // ─── STATE ─────────────────────────────────────────────────────────────────
