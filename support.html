@@ -233,7 +233,7 @@ footer a:hover{color:#FF5722}
         <span class="faq-chevron">▼</span>
       </button>
       <div class="faq-a">
-        You can cancel anytime from <strong>More → Subscription & Usage</strong> in the app, or contact us at <a href="mailto:support@condosuper.app" style="color:#FF5722">support@condosuper.app</a>. Your access continues until the end of your current billing period. We don't offer refunds for partial billing periods.
+        You can cancel anytime from <strong>More → Subscription & Usage</strong> in the app, or contact us at <a href="mailto:info@condosuper.app" style="color:#FF5722">info@condosuper.app</a>. Your access continues until the end of your current billing period. We don't offer refunds for partial billing periods.
       </div>
     </div>
 
@@ -312,6 +312,143 @@ footer a:hover{color:#FF5722}
   </div>
   <div class="footer-copy">© 2025 Condo Super — Stoney Creek Property Maintenance Inc. All rights reserved.</div>
 </footer>
+
+<!-- ═══ CONTACT FORM SECTION ═══ -->
+<section style="background:#FAFAF5;padding:64px 24px;border-top:1px solid #EEEEEA">
+  <div style="max-width:680px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="display:inline-block;background:#FFF3EE;color:#FF5722;border-radius:99px;padding:6px 16px;font-size:13px;font-weight:700;margin-bottom:16px">CONTACT US</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#1a1a2e;margin-bottom:10px">Send us a message</h2>
+      <p style="font-size:16px;color:#666">We typically respond within 24 hours on business days.</p>
+    </div>
+
+    <div style="background:#fff;border-radius:24px;border:1px solid #EEEEEA;padding:40px;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+
+      <div id="support-form-error" style="display:none;background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;font-size:14px;color:#DC2626;margin-bottom:16px">
+        Something went wrong. Please email us directly at <a href="mailto:info@condosuper.app" style="color:#DC2626;font-weight:600">info@condosuper.app</a>
+      </div>
+
+      <div id="support-form">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:13px;font-weight:600;color:#1a1a2e">Full Name *</label>
+            <input id="sf-name" type="text" placeholder="John Smith" style="padding:12px 14px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#FF5722'" onblur="this.style.borderColor='#E5E5DC'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:13px;font-weight:600;color:#1a1a2e">Email Address *</label>
+            <input id="sf-email" type="email" placeholder="john@company.com" style="padding:12px 14px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;transition:border .2s" onfocus="this.style.borderColor='#FF5722'" onblur="this.style.borderColor='#E5E5DC'">
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+          <label style="font-size:13px;font-weight:600;color:#1a1a2e">Topic *</label>
+          <select id="sf-subject" style="padding:12px 14px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;background:#fff;transition:border .2s" onfocus="this.style.borderColor='#FF5722'" onblur="this.style.borderColor='#E5E5DC'">
+            <option value="" disabled selected>Select a topic...</option>
+            <option>General Inquiry</option>
+            <option>Technical Support</option>
+            <option>Billing &amp; Subscription</option>
+            <option>Feature Request</option>
+            <option>Account Access</option>
+            <option>Bug Report</option>
+            <option>Enterprise Sales</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">
+          <label style="font-size:13px;font-weight:600;color:#1a1a2e">Message *</label>
+          <textarea id="sf-message" placeholder="Tell us how we can help you..." style="padding:12px 14px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;resize:vertical;min-height:120px;transition:border .2s" onfocus="this.style.borderColor='#FF5722'" onblur="this.style.borderColor='#E5E5DC'"></textarea>
+        </div>
+
+        <button id="sf-btn" onclick="submitSupportForm()" style="width:100%;background:#FF5722;color:#fff;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s" onmouseover="this.style.background='#E64A19'" onmouseout="this.style.background='#FF5722'">
+          <span id="sf-btn-text">Send Message</span>
+        </button>
+
+        <p style="font-size:12px;color:#999;text-align:center;margin-top:12px">
+          Or email us directly at <a href="mailto:info@condosuper.app" style="color:#FF5722">info@condosuper.app</a>
+        </p>
+      </div>
+
+      <!-- Success -->
+      <div id="support-form-success" style="display:none;text-align:center;padding:32px 0">
+        <div style="width:64px;height:64px;background:#DCFCE7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px">✓</div>
+        <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px">Message sent!</div>
+        <div style="font-size:15px;color:#555;line-height:1.6;margin-bottom:20px">We'll get back to you at <strong id="sf-success-email"></strong> within 24 hours.</div>
+        <button onclick="resetSupportForm()" style="background:#1a1a2e;color:#fff;border:none;border-radius:99px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send another message</button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TAWK.TO LIVE CHAT ═══ -->
+<!-- Replace YOUR_TAWK_ID with your real Tawk.to property ID -->
+<!-- Sign up free at https://tawk.to, get your embed code, replace the script below -->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+  var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+  s1.async=true;
+  s1.src='https://embed.tawk.to/YOUR_TAWK_PROPERTY_ID/YOUR_TAWK_WIDGET_ID';
+  s1.charset='UTF-8';
+  s1.setAttribute('crossorigin','*');
+  s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+
+<script>
+async function submitSupportForm() {
+  const name    = document.getElementById('sf-name').value.trim();
+  const email   = document.getElementById('sf-email').value.trim();
+  const subject = document.getElementById('sf-subject').value;
+  const message = document.getElementById('sf-message').value.trim();
+  const btn     = document.getElementById('sf-btn');
+  const btnText = document.getElementById('sf-btn-text');
+  const errEl   = document.getElementById('support-form-error');
+
+  errEl.style.display = 'none';
+
+  if (!name)    { sfHighlight('sf-name'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { sfHighlight('sf-email'); return; }
+  if (!subject) { sfHighlight('sf-subject'); return; }
+  if (!message) { sfHighlight('sf-message'); return; }
+
+  btn.disabled = true;
+  btnText.textContent = 'Sending…';
+
+  try {
+    const res = await fetch('https://formspree.io/f/YOUR_FORMSPREE_ID', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ name, email, subject, message, _replyto: email }),
+    });
+    if (res.ok) {
+      document.getElementById('sf-success-email').textContent = email;
+      document.getElementById('support-form').style.display = 'none';
+      document.getElementById('support-form-success').style.display = 'block';
+    } else { throw new Error(); }
+  } catch {
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btnText.textContent = 'Send Message';
+  }
+}
+
+function sfHighlight(id) {
+  const el = document.getElementById(id);
+  el.style.borderColor = '#DC2626';
+  el.focus();
+  setTimeout(() => el.style.borderColor = '#E5E5DC', 3000);
+}
+
+function resetSupportForm() {
+  document.getElementById('support-form').style.display = 'block';
+  document.getElementById('support-form-success').style.display = 'none';
+  ['sf-name','sf-email','sf-message'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('sf-subject').value = '';
+}
+</script>
+
 
 <script>
 function toggleFAQ(btn) {

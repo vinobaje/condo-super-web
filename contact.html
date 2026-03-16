@@ -120,7 +120,7 @@ footer a:hover{color:#FF5722}
         <div class="info-icon">✉️</div>
         <div>
           <div class="info-label">Email</div>
-          <div class="info-value"><a href="mailto:support@condosuper.app">support@condosuper.app</a></div>
+          <div class="info-value"><a href="mailto:info@condosuper.app">info@condosuper.app</a></div>
         </div>
       </div>
 
@@ -257,7 +257,7 @@ async function submitContactForm() {
 
   try {
     // Send via Formspree (no backend needed)
-    const res = await fetch('https://formspree.io/f/YOUR_FORMSPREE_ID', {
+    const res = await fetch('https://formspree.io/f/xpwzinfo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ name, email, subject, company, message }),
