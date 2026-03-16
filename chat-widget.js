@@ -6,7 +6,7 @@
   'use strict';
 
   const FB_URL        = 'https://condo-super-default-rtdb.firebaseio.com';
-  const CHATBOT_URL   = 'https://us-central1-condo-super.cloudfunctions.net/chatbot';
+  const CHATBOT_URL   = 'https://us-central1-condo-super-app-web.cloudfunctions.net/chatbot';
   const BRAND         = { color: '#FF5722', navy: '#1a1a2e' };
 
   let mode         = 'ai';
