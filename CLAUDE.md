@@ -283,7 +283,7 @@ git push https://TOKEN@github.com/vinobaje/condo-super-web.git main
 |---|---|
 | Project ID | `condo-super` |
 | Hosting site | `condo-super-app` |
-| Live URLs | `condosuper.app`, `condo-super-app.web.app` |
+| Live URLs | `condosuper.app`, `condo-super-app.web.app`, `condo-super-app.firebaseapp.com` |
 | Realtime DB | `https://condo-super-default-rtdb.firebaseio.com` |
 | What's deployed here | `index.html`, `chat-widget.js`, `admin-chat.html`, `support.html`, `contact.html` |
 | Existing iOS functions | `onEmployeeCreated`, `recalculateCounts`, `parseActivityFromVoice`, `trackStorageUpload`, `onEmployeeDeleted`, `onSiteDeleted`, `trackStorageDelete`, `onSubscriptionChange`, `onSiteCreated` |
