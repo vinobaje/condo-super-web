@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — Condo Super</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,sans-serif;background:#F5F5F0;color:#1a1a2e}
+
+nav{background:rgba(245,245,240,.97);border-bottom:1px solid #E5E5DC;padding:0 24px;position:sticky;top:0;z-index:100}
+.nav-inner{max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{text-decoration:none;font-family:'Playfair Display',serif;font-weight:700;font-size:22px}
+.logo .condo{color:#1a1a2e}.logo .super{color:#FF5722}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{color:#1a1a2e;text-decoration:none;font-size:14px;font-weight:500}
+.nav-links a:hover{color:#FF5722}
+.btn-dl{background:#FF5722;color:#fff!important;border-radius:99px;padding:9px 22px;font-size:14px;font-weight:600}
+
+/* HERO */
+.hero{background:#1a1a2e;padding:60px 24px;text-align:center}
+.hero h1{font-family:'Playfair Display',serif;font-size:44px;font-weight:800;color:#fff;margin-bottom:14px}
+.hero p{font-size:17px;color:rgba(255,255,255,.65);max-width:500px;margin:0 auto}
+
+/* SEARCH */
+.search-wrap{max-width:600px;margin:-28px auto 0;padding:0 24px;position:relative;z-index:10}
+.search-box{display:flex;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12);overflow:hidden;border:1.5px solid #EEEEEA}
+.search-box input{flex:1;padding:16px 20px;border:none;outline:none;font-size:16px;font-family:inherit;color:#1a1a2e}
+.search-box button{background:#FF5722;color:#fff;border:none;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s}
+.search-box button:hover{background:#E64A19}
+
+/* QUICK LINKS */
+.quick-wrap{max-width:1120px;margin:48px auto 0;padding:0 24px}
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.quick-card{background:#fff;border-radius:16px;padding:24px 20px;text-align:center;border:1px solid #EEEEEA;text-decoration:none;transition:box-shadow .2s,transform .2s}
+.quick-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.1);transform:translateY(-2px)}
+.quick-card .icon{font-size:32px;margin-bottom:12px}
+.quick-card .title{font-size:15px;font-weight:600;color:#1a1a2e;margin-bottom:4px}
+.quick-card .sub{font-size:13px;color:#777}
+
+/* FAQ */
+.section{max-width:1120px;margin:0 auto;padding:64px 24px}
+.section-tag{display:inline-block;background:#FFF3EE;color:#FF5722;border-radius:99px;padding:6px 16px;font-size:13px;font-weight:700;margin-bottom:16px}
+h2{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:#1a1a2e;margin-bottom:8px}
+.section-sub{font-size:16px;color:#666;margin-bottom:40px}
+
+.faq-list{display:flex;flex-direction:column;gap:12px}
+.faq-item{background:#fff;border-radius:14px;border:1px solid #EEEEEA;overflow:hidden}
+.faq-q{width:100%;text-align:left;background:none;border:none;padding:20px 24px;font-size:16px;font-weight:600;color:#1a1a2e;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit;gap:16px}
+.faq-q:hover{background:#FAFAF5}
+.faq-chevron{font-size:18px;color:#FF5722;flex-shrink:0;transition:transform .25s}
+.faq-a{display:none;padding:0 24px 20px;font-size:15px;color:#555;line-height:1.7}
+.faq-item.open .faq-a{display:block}
+.faq-item.open .faq-chevron{transform:rotate(180deg)}
+
+/* CONTACT FORM */
+.contact-wrap{background:#fff;border-radius:24px;border:1px solid #EEEEEA;padding:40px;max-width:680px;margin:0 auto}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.form-group label{font-size:13px;font-weight:600;color:#1a1a2e}
+.form-group input,.form-group select,.form-group textarea{padding:12px 14px;border:1.5px solid #E5E5DC;border-radius:10px;font-size:15px;outline:none;font-family:inherit;color:#1a1a2e;transition:border .2s;background:#fff}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#FF5722}
+.form-group textarea{resize:vertical;min-height:120px}
+.btn-submit{width:100%;background:#FF5722;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .2s;margin-top:8px}
+.btn-submit:hover{background:#E64A19}
+.form-success{display:none;text-align:center;padding:32px 0}
+.form-success .icon{font-size:48px;margin-bottom:16px}
+.form-success h3{font-family:'Playfair Display',serif;font-size:24px;color:#1a1a2e;margin-bottom:8px}
+.form-success p{color:#666;font-size:15px}
+
+/* CONTACT INFO */
+.contact-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:40px}
+.info-card{background:#F5F5F0;border-radius:16px;padding:24px;display:flex;align-items:flex-start;gap:14px}
+.info-icon{width:44px;height:44px;background:#FFF3EE;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.info-label{font-size:13px;color:#888;margin-bottom:4px}
+.info-value{font-size:15px;font-weight:600;color:#1a1a2e}
+.info-value a{color:#FF5722;text-decoration:none}
+
+/* FOOTER */
+footer{background:#111122;color:rgba(255,255,255,.5);padding:40px 24px;text-align:center}
+footer a{color:rgba(255,255,255,.5);text-decoration:none;margin:0 12px;font-size:14px}
+footer a:hover{color:#FF5722}
+.footer-logo{font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-bottom:16px}
+.footer-links{margin-bottom:20px}
+.footer-copy{font-size:13px;color:rgba(255,255,255,.3);margin-top:16px}
+
+@media(max-width:600px){
+  .form-row{grid-template-columns:1fr}
+  .hero h1{font-size:32px}
+  .nav-links a:not(.btn-dl){display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo"><span class="condo">Condo</span><span class="super">Super</span></a>
+    <div class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/support.html">Support</a>
+      <a href="/contact.html">Contact</a>
+      <a href="https://apps.apple.com/ca/app/condo-super/id6756904817" target="_blank" class="btn-dl">Download</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>How can we help?</h1>
+  <p>Find answers, troubleshoot issues, or get in touch with our support team.</p>
+</section>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+  <div class="search-box">
+    <input type="text" id="faq-search" placeholder="Search for help..." oninput="filterFAQ(this.value)">
+    <button onclick="filterFAQ(document.getElementById('faq-search').value)">Search</button>
+  </div>
+</div>
+
+<!-- QUICK LINKS -->
+<div class="quick-wrap">
+  <div class="quick-grid">
+    <a href="#faq" class="quick-card">
+      <div class="icon">❓</div>
+      <div class="title">FAQ</div>
+      <div class="sub">Common questions answered</div>
+    </a>
+    <a href="/contact.html" class="quick-card">
+      <div class="icon">✉️</div>
+      <div class="title">Contact Us</div>
+      <div class="sub">Send us a message</div>
+    </a>
+    <a href="https://apps.apple.com/ca/app/condo-super/id6756904817" target="_blank" class="quick-card">
+      <div class="icon">📱</div>
+      <div class="title">Download App</div>
+      <div class="sub">iOS & Android</div>
+    </a>
+    <a href="/#pricing" class="quick-card">
+      <div class="icon">💳</div>
+      <div class="title">Billing & Plans</div>
+      <div class="sub">Manage your subscription</div>
+    </a>
+  </div>
+</div>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="section-tag">FAQ</div>
+  <h2>Frequently Asked Questions</h2>
+  <p class="section-sub">Everything you need to know about Condo Super.</p>
+
+  <div class="faq-list" id="faq-list">
+
+    <div class="faq-item" data-q="getting started download app">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do I get started with Condo Super?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Download the Condo Super app from the <a href="https://apps.apple.com/ca/app/condo-super/id6756904817" style="color:#FF5722">App Store</a> or <a href="https://play.google.com/store/apps/details?id=com.condosuper.app" style="color:#FF5722">Google Play</a>. Create your account, set up your company, add your job sites, and invite your team members. The Free plan lets you get started immediately with no credit card required.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="add employees team members invite">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do I add employees to my account?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Go to <strong>More → Company Management → Team</strong> in the app, or use the web dashboard at condosuper.app. Tap "Add Employee", enter their name and email, and assign their role (Manager or Employee). They'll receive an invitation to download the app and join your team.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="clock in out gps time tracking location">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How does GPS time tracking work?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Employees open the app and tap <strong>Clock In</strong> on the Time Clock screen. The app captures their GPS coordinates at clock-in and clock-out, and tracks their movement throughout the shift. As an admin, you can view tracking points, total distance covered, and shift duration from the web dashboard or the app.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="photos upload documentation camera">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do employees upload photos and videos?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Tap the <strong>Photos</strong> tab or use the <strong>Take Photo</strong> quick action on the Time Clock screen. Photos are automatically tagged with the job site and timestamp. You can add custom tags for better organization. Videos are available on Starter plan and above.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="reports pdf payroll weekly highlights export">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do I generate reports?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Go to the <strong>Reports</strong> tab in the app or web dashboard. Choose from Photo Documentation, Payroll, Daily Activity, Weekly Highlights, Incidents, or Daily Logs reports. Set your date range, filter by employee or site, then tap <strong>Print Report</strong> or <strong>Export CSV</strong>.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="voice activity log logging speak">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How does voice-powered activity logging work?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        From the Time Clock screen, tap the <strong>Activity</strong> quick action button, then tap <strong>Describe with Voice</strong>. Speak naturally about what you did — who you contacted, what was discussed, any costs, and any follow-up needed. The app structures it automatically into a categorized activity entry that feeds into your Weekly Highlights report.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="incident report safety injury near miss">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do I report a safety incident?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Tap the <strong>Incident</strong> quick action button on the Time Clock screen, or go to <strong>More → Incidents</strong>. Select the incident type (Injury, Near Miss, Property Damage, Equipment Failure, Environmental Hazard, Vehicle Accident, Fire, Chemical Spill, or Electrical Incident), fill in the details, and submit. You can also use voice input to describe the incident quickly.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="cancel subscription billing refund">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How do I cancel my subscription?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        You can cancel anytime from <strong>More → Subscription & Usage</strong> in the app, or contact us at <a href="mailto:support@condosuper.app" style="color:#FF5722">support@condosuper.app</a>. Your access continues until the end of your current billing period. We don't offer refunds for partial billing periods.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="upgrade downgrade change plan">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        Can I upgrade or downgrade my plan?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Yes! You can upgrade at any time and the new features will be available immediately. Downgrades take effect at the end of your current billing period. Go to <strong>More → Subscription & Usage</strong> in the app or contact our support team.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="data secure privacy firebase encryption">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        How is my data protected?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        All data is encrypted in transit using HTTPS/TLS and stored securely on Google Firebase infrastructure. The app uses biometric authentication (Face ID / Touch ID) and iOS Keychain integration for credential storage. We never sell your data to third parties. View our full <a href="/privacy.html" style="color:#FF5722">Privacy Policy</a>.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="offline no internet connection">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        Does the app work without internet?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Basic time tracking and photo capture work with limited connectivity. However, syncing data to the dashboard, team messaging, and real-time location tracking require an active internet connection. We recommend ensuring employees have a reliable mobile data connection while on site.
+      </div>
+    </div>
+
+    <div class="faq-item" data-q="android ios platform support">
+      <button class="faq-q" onclick="toggleFAQ(this)">
+        What platforms does Condo Super support?
+        <span class="faq-chevron">▼</span>
+      </button>
+      <div class="faq-a">
+        Condo Super is available on <strong>iOS</strong> (iPhone, requires iOS 15 or later) and <strong>Android</strong> (requires Android 8.0 or later). The web dashboard at <a href="https://condosuper.app" style="color:#FF5722">condosuper.app</a> works on any modern browser on desktop or mobile.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- No results message -->
+  <div id="faq-empty" style="display:none;text-align:center;padding:40px;color:#888">
+    <div style="font-size:32px;margin-bottom:12px">🔍</div>
+    <div style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:8px">No results found</div>
+    <div style="font-size:14px">Try different keywords or <a href="/contact.html" style="color:#FF5722">contact us</a> directly.</div>
+  </div>
+</section>
+
+<!-- STILL NEED HELP -->
+<section style="background:#1a1a2e;padding:64px 24px;text-align:center">
+  <div style="max-width:520px;margin:0 auto">
+    <div style="font-size:40px;margin-bottom:16px">💬</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:#fff;margin-bottom:12px">Still need help?</h2>
+    <p style="font-size:16px;color:rgba(255,255,255,.65);margin-bottom:32px;line-height:1.6">Our support team typically responds within 24 hours on business days.</p>
+    <a href="/contact.html" style="display:inline-flex;align-items:center;gap:8px;background:#FF5722;color:#fff;border-radius:99px;padding:14px 32px;font-size:16px;font-weight:600;text-decoration:none">
+      Contact Support →
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo"><span style="color:#fff">Condo</span><span style="color:#FF5722">Super</span></div>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/#features">Features</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/support.html">Support</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+  </div>
+  <div class="footer-copy">© 2025 Condo Super — Stoney Creek Property Maintenance Inc. All rights reserved.</div>
+</footer>
+
+<script>
+function toggleFAQ(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+function filterFAQ(query) {
+  const q = query.toLowerCase().trim();
+  const items = document.querySelectorAll('.faq-item');
+  let visible = 0;
+  items.forEach(item => {
+    const text = (item.dataset.q + ' ' + item.textContent).toLowerCase();
+    const show = !q || text.includes(q);
+    item.style.display = show ? 'block' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('faq-empty').style.display = visible === 0 ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
