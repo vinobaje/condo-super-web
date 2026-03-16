@@ -210,7 +210,19 @@
   function body() { return document.getElementById('cs-body'); }
   function scrollBottom() { const b = body(); if (b) setTimeout(() => b.scrollTop = b.scrollHeight, 50); }
   function now() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+  function esc(s) {
+    let t = String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Bold **text**
+    t = t.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+    // Bullet lines starting with - 
+    t = t.replace(/\n- ([^\n]+)/g,'<li style="margin:3px 0">$1</li>');
+    // Wrap li groups in ul
+    t = t.replace(/(<li[^>]*>.*?<\/li>(\s*<li[^>]*>.*?<\/li>)*)/gs,'<ul style="margin:6px 0 4px 14px;padding:0">$1</ul>');
+    // Paragraph breaks
+    t = t.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+    return t;
+  }
   function hl(id) { const el = document.getElementById(id); if (!el) return; el.style.borderColor = '#DC2626'; el.focus(); setTimeout(() => el.style.borderColor = '#E5E5DC', 3000); }
 
   window.__cs = { toggle, open, close, start, send, key, escalate };
