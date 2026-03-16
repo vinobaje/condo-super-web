@@ -266,3 +266,94 @@ git push https://TOKEN@github.com/vinobaje/condo-super-web.git main
   - `getSubscriptionStatus` — checks if email has active subscription
   - `cancelSubscription` — cancels at period end
 - **Firestore collection**: `subscriptions/{email}`
+
+---
+
+## Firebase Projects — Hosting & Functions Reference
+
+### ⚠️ IMPORTANT: Two separate Firebase projects are used
+
+---
+
+### Project 1: `condo-super`
+**Purpose:** Hosts the marketing website (condosuper.app)
+**DO NOT deploy functions here** — this project has existing iOS app functions that must not be touched
+
+| Property | Value |
+|---|---|
+| Project ID | `condo-super` |
+| Hosting site | `condo-super-app` |
+| Live URLs | `condosuper.app`, `condo-super-app.web.app` |
+| Realtime DB | `https://condo-super-default-rtdb.firebaseio.com` |
+| What's deployed here | `index.html`, `chat-widget.js`, `admin-chat.html`, `support.html`, `contact.html` |
+| Existing iOS functions | `onEmployeeCreated`, `recalculateCounts`, `parseActivityFromVoice`, `trackStorageUpload`, `onEmployeeDeleted`, `onSiteDeleted`, `trackStorageDelete`, `onSubscriptionChange`, `onSiteCreated` |
+
+**Deploy command (hosting only):**
+```bash
+echo '{"projects":{"default":"condo-super"}}' > .firebaserc
+firebase deploy --only hosting --project condo-super
+```
+
+---
+
+### Project 2: `condo-super-app-web`
+**Purpose:** Hosts the website's Cloud Functions (Stripe payments + AI chatbot)
+**Safe to deploy functions here** — empty project, no existing functions to worry about
+
+| Property | Value |
+|---|---|
+| Project ID | `condo-super-app-web` |
+| Hosting site | `condo-super-app-web` |
+| Live URLs | `condo-super-app-web.web.app` |
+| Realtime DB | `https://condo-super-app-web-default-rtdb.firebaseio.com` |
+| Functions deployed | `createPaymentIntent`, `stripeWebhook`, `getSubscriptionStatus`, `cancelSubscription`, `chatbot` |
+| Functions URL | `https://us-central1-condo-super-app-web.cloudfunctions.net/` |
+
+**Deploy command (functions only):**
+```bash
+echo '{"projects":{"default":"condo-super-app-web"}}' > .firebaserc
+firebase deploy --only functions --project condo-super-app-web
+```
+
+---
+
+### functions/.env (required — never committed to git)
+```
+STRIPE_SECRET=sk_live_YOUR_STRIPE_SECRET_KEY
+ANTHROPIC_API_KEY=sk-ant-YOUR_ANTHROPIC_API_KEY
+```
+
+---
+
+### Standard Deploy Workflow (do this every time)
+
+```bash
+# 1. Pull latest from GitHub
+git pull
+
+# 2. Deploy website to condosuper.app
+echo '{"projects":{"default":"condo-super"}}' > .firebaserc
+firebase deploy --only hosting --project condo-super
+
+# 3. Deploy functions (Stripe + AI chatbot)
+echo '{"projects":{"default":"condo-super-app-web"}}' > .firebaserc
+firebase deploy --only functions --project condo-super-app-web
+
+# 4. Reset .firebaserc back to condo-super for next time
+echo '{"projects":{"default":"condo-super"}}' > .firebaserc
+```
+
+### ⚠️ Common Mistakes to Avoid
+- NEVER run `cd condo-super-web` if you are already inside the project folder
+- NEVER run `firebase deploy --only functions --project condo-super` — this will overwrite the iOS app functions!
+- ALWAYS check `.firebaserc` before deploying — run `cat .firebaserc` to verify
+- ALWAYS recreate `functions/.env` after a fresh `git clone` — it is not in git
+
+### Correct Working Directory
+```
+/Users/vino/Documents/condo-super-web/   ← CORRECT
+```
+NOT:
+```
+/Users/vino/Documents/condo-super-web/condo-super-web/   ← WRONG (nested)
+```
