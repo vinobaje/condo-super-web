@@ -158,9 +158,7 @@ footer a:hover{color:#FF5722}
     <div class="form-card">
       <h3>Send us a message</h3>
 
-      <div class="form-error" id="form-error">Something went wrong. Please try again or email us directly.</div>
-
-      <div id="contact-form">
+          <div id="contact-form">
         <div class="form-row">
           <div class="form-group">
             <label for="cf-name">Full Name *</label>
@@ -233,48 +231,36 @@ footer a:hover{color:#FF5722}
 </footer>
 
 <script>
-async function submitContactForm() {
+function submitContactForm() {
   const name    = document.getElementById('cf-name').value.trim();
   const email   = document.getElementById('cf-email').value.trim();
   const subject = document.getElementById('cf-subject').value;
   const company = document.getElementById('cf-company').value.trim();
   const message = document.getElementById('cf-message').value.trim();
-  const btn     = document.getElementById('btn-submit');
-  const btnText = document.getElementById('btn-text');
-  const errEl   = document.getElementById('form-error');
 
-  errEl.style.display = 'none';
-
-  // Validate
-  if (!name) { highlight('cf-name'); return; }
+  if (!name)    { highlight('cf-name'); return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { highlight('cf-email'); return; }
   if (!subject) { highlight('cf-subject'); return; }
   if (!message) { highlight('cf-message'); return; }
 
-  // Loading
-  btn.disabled = true;
-  btnText.textContent = 'Sending…';
+  const body = 'Name: ' + name
+    + '\nEmail: ' + email
+    + (company ? '\nCompany: ' + company : '')
+    + '\nTopic: ' + subject
+    + '\n\n' + message;
 
-  try {
-    // Send via Formspree (no backend needed)
-    const res = await fetch('https://formspree.io/f/xpwzinfo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ name, email, subject, company, message }),
-    });
+  const mailto = 'mailto:info@condosuper.app'
+    + '?subject=' + encodeURIComponent('[Condo Super] ' + subject)
+    + '&body=' + encodeURIComponent(body);
 
-    if (res.ok) {
-      document.getElementById('success-email-display').textContent = email;
-      document.getElementById('contact-form').style.display = 'none';
-      document.getElementById('form-success').style.display = 'block';
-    } else {
-      throw new Error('Failed');
-    }
-  } catch (err) {
-    errEl.style.display = 'block';
-    btn.disabled = false;
-    btnText.textContent = 'Send Message';
-  }
+  window.location.href = mailto;
+
+  // Show success after short delay
+  setTimeout(function() {
+    document.getElementById('success-email-display').textContent = email;
+    document.getElementById('contact-form').style.display = 'none';
+    document.getElementById('form-success').style.display = 'block';
+  }, 500);
 }
 
 function highlight(id) {
