@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "condo-super-app",
+    "site": "condo-super-app-web",
     "public": ".",
     "ignore": [
       "firebase.json",
