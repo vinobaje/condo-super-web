@@ -264,10 +264,23 @@ async function loadConversations() {
   const prevConvs = { ...conversations };
   conversations = data;
 
-  // Check for new conversations
+  // Check for new conversations OR new messages in existing conversations
   Object.entries(data).forEach(([id, conv]) => {
-    if (!prevConvs[id] && conv.status === 'open') {
+    const isNewConv = !prevConvs[id] && conv.status === 'open';
+    const prevMsgTime = prevConvs[id]?.lastMessage?.timestamp;
+    const currMsgTime = conv.lastMessage?.timestamp;
+    const isNewMsg = prevConvs[id]
+      && currMsgTime
+      && currMsgTime !== prevMsgTime
+      && conv.lastMessage?.sender !== 'agent'  // don't notify for our own replies
+      && id !== activeSession;                  // don't notify if chat is already open
+
+    if (isNewConv || isNewMsg) {
       playNotification();
+      // Mark as unread in sidebar if not currently open
+      if (id !== activeSession) {
+        conversations[id].unreadByAgent = true;
+      }
     }
   });
 
