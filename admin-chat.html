@@ -436,21 +436,52 @@ async function deleteConversation() {
 }
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+// AudioContext — initialised on first user interaction to bypass browser autoplay policy
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+// Warm up AudioContext on first click anywhere
+document.addEventListener('click', () => getAudioCtx(), { once: true });
+
 function playNotification() {
   if (!soundEnabled) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-  } catch(e) {}
+    const ctx = getAudioCtx();
+    // Double-beep — more noticeable than single tone
+    [0, 0.18].forEach(offset => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(980, ctx.currentTime + offset);
+      osc.frequency.setValueAtTime(780, ctx.currentTime + offset + 0.08);
+      gain.gain.setValueAtTime(0.45, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.25);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.25);
+    });
+  } catch(e) { console.warn('Audio error:', e); }
+
+  // Visual flash on tab title + sidebar
+  const orig = document.title;
+  let flashes = 0;
+  const iv = setInterval(() => {
+    document.title = flashes % 2 === 0 ? '🔔 New message! — Live Chat' : orig;
+    flashes++;
+    if (flashes >= 8) { clearInterval(iv); document.title = orig; }
+  }, 600);
+
+  // Flash the sidebar orange
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    sidebar.style.transition = 'background .15s';
+    sidebar.style.background = '#FF5722';
+    setTimeout(() => sidebar.style.background = '#1a1a2e', 300);
+  }
 }
 
 function toggleSound() {
