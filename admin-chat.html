@@ -324,6 +324,12 @@ function renderConvList(data) {
 
 // ─── SELECT CONVERSATION ─────────────────────────────────────────────────────
 async function selectConv(sessionId) {
+  // Stop scrolling title when user opens a chat
+  if (window._titleScroll) {
+    clearInterval(window._titleScroll);
+    window._titleScroll = null;
+    document.title = 'Live Chat — Condo Super Admin';
+  }
   activeSession = sessionId;
   lastMsgCount  = 0;
   if (msgPollTimer) clearInterval(msgPollTimer);
@@ -474,6 +480,23 @@ function playNotification() {
     flashes++;
     if (flashes >= 8) { clearInterval(iv); document.title = orig; }
   }, 600);
+
+  // Scrolling title bar
+  if (window._titleScroll) clearInterval(window._titleScroll);
+  const newMsgText = '🔔 New message from visitor! ';
+  const padded = newMsgText + '— Condo Super Live Chat — ' + newMsgText + '— Condo Super Live Chat — ';
+  let pos = 0;
+  window._titleScroll = setInterval(() => {
+    document.title = padded.substring(pos, pos + 40);
+    pos = (pos + 1) % (newMsgText.length + 26);
+  }, 120);
+
+  // Stop scrolling after 20 seconds and restore original
+  setTimeout(() => {
+    clearInterval(window._titleScroll);
+    window._titleScroll = null;
+    document.title = 'Live Chat — Condo Super Admin';
+  }, 20000);
 
   // Flash the sidebar orange
   const sidebar = document.querySelector('.sidebar');
