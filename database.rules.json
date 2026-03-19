@@ -1,13 +1,20 @@
 {
   "rules": {
     "chats": {
+      ".read": true,
       "$sessionId": {
-        ".read": true,
         ".write": true,
+        ".validate": "newData.hasChildren(['visitorName', 'visitorEmail', 'status'])",
         "messages": {
-          ".read": true,
-          ".write": true
-        }
+          "$messageId": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['text', 'sender', 'timestamp']) && newData.child('text').val().length <= 2000"
+          }
+        },
+        "lastMessage": { ".write": true },
+        "unreadByAgent": { ".write": true },
+        "unreadByVisitor": { ".write": true },
+        "status": { ".write": true }
       }
     }
   }
