@@ -3,15 +3,15 @@
   "description": "Firebase Cloud Functions for Condo Super Stripe integration",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions:stripeWebhook,functions:createPaymentIntent,functions:getSubscriptionStatus,functions:cancelSubscription,functions:chatbot --project condo-super"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
     "firebase-admin": "^11.0.0",
-    "firebase-functions": "^4.0.0",
+    "firebase-functions": "^7.2.5",
     "stripe": "^14.0.0",
     "cors": "^2.8.5"
   }

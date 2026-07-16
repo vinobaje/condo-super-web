@@ -1,6 +1,9 @@
-const functions = require("firebase-functions");
+// v1 compat import (see index.js — keeps these functions gen-1, stable URLs).
+const functions = require("firebase-functions/v1");
 const cors = require("cors")({ origin: true });
 
+// Bound from Secret Manager via runWith({ secrets }) on the export below,
+// injected as an env var at instance start.
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ─── CONDO SUPER KNOWLEDGE BASE ───────────────────────────────────────────────
@@ -46,7 +49,9 @@ HTTPS/TLS encryption, Face ID/Touch ID biometric auth, iOS Keychain, Firebase Cl
 - Never make up features or prices that aren't listed above
 - Be warm and encouraging — help people understand the value of Condo Super`;
 
-exports.chatbot = functions.https.onRequest((req, res) => {
+exports.chatbot = functions
+  .runWith({ secrets: ["ANTHROPIC_API_KEY"] })
+  .https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 

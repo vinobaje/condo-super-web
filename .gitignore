@@ -3,3 +3,4 @@ functions/.env.local
 node_modules/
 functions/node_modules/
 .firebase/
+functions/.env.backup-pre-secret-manager

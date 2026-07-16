@@ -1,4 +1,8 @@
-const functions = require("firebase-functions");
+// v1 compat import, on purpose: in firebase-functions v6+ the top-level
+// require returns the v2 API, and migrating these deployed gen-1 functions to
+// gen-2 would require delete-and-recreate (URL churn on a live Stripe webhook).
+// Gen-1 on Node 22 + firebase-functions v7 is fully supported.
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const stripe = require("stripe");
 const cors = require("cors")({ origin: true });
@@ -7,16 +11,19 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // ─── STRIPE CONFIG ────────────────────────────────────────────────────────────
-const STRIPE_SECRET = process.env.STRIPE_SECRET || functions.config().stripe?.secret;
+// Secrets come from Google Secret Manager, bound via runWith({ secrets }) below
+// and injected as environment variables at instance start. The legacy
+// functions.config() API is removed in firebase-functions v7; the webhook
+// signing secrets used to be hardcoded here — moved to Secret Manager.
+const STRIPE_SECRET = process.env.STRIPE_SECRET;
 
-// Each webhook destination has its own signing secret
-// Since all 4 point to the same endpoint, we try each secret until one validates
-const WEBHOOK_SECRETS = [
-  "whsec_UaVKECKWyp2a5RuiUwHDaSq2txPWlgUV",  // invoice.payment_succeeded
-  "whsec_Dt1IEknm5iRWmFoQELqHwneiRio7OiCg",  // invoice.payment_failed
-  "whsec_hDa4BdNL83DA20c3xMi7Xi1bxa0vvluA",  // customer.subscription.deleted
-  "whsec_mvWnpKw8bWwbb7UphRvyMpmGtW4RJ0H8",  // customer.subscription.updated
-];
+// Each webhook destination has its own signing secret. Since all 4 point to
+// the same endpoint, we try each until one validates. Stored comma-separated
+// in the STRIPE_WEBHOOK_SECRETS secret (order: invoice.payment_succeeded,
+// invoice.payment_failed, customer.subscription.deleted,
+// customer.subscription.updated).
+const WEBHOOK_SECRETS = (process.env.STRIPE_WEBHOOK_SECRETS || "")
+  .split(",").map((s) => s.trim()).filter(Boolean);
 
 // ─── REAL PRICE IDs ───────────────────────────────────────────────────────────
 const PRICES = {
@@ -35,7 +42,9 @@ const PRICES = {
 };
 
 // ─── 1. CREATE PAYMENT INTENT ─────────────────────────────────────────────────
-exports.createPaymentIntent = functions.https.onRequest((req, res) => {
+exports.createPaymentIntent = functions
+  .runWith({ secrets: ["STRIPE_SECRET"] })
+  .https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     try {
@@ -73,8 +82,12 @@ exports.createPaymentIntent = functions.https.onRequest((req, res) => {
 });
 
 // ─── 2. STRIPE WEBHOOK ────────────────────────────────────────────────────────
-// Tries all 4 signing secrets since each event destination has its own
-exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
+// Tries all 4 signing secrets since each event destination has its own.
+// NOTE: signature verification MUST use req.rawBody (the untouched Buffer),
+// never req.body.
+exports.stripeWebhook = functions
+  .runWith({ secrets: ["STRIPE_SECRET", "STRIPE_WEBHOOK_SECRETS"] })
+  .https.onRequest(async (req, res) => {
   const sig = req.headers["stripe-signature"];
   const stripeClient = stripe(STRIPE_SECRET);
   let event = null;
@@ -177,7 +190,9 @@ exports.getSubscriptionStatus = functions.https.onRequest((req, res) => {
 });
 
 // ─── 4. CANCEL SUBSCRIPTION ──────────────────────────────────────────────────
-exports.cancelSubscription = functions.https.onRequest((req, res) => {
+exports.cancelSubscription = functions
+  .runWith({ secrets: ["STRIPE_SECRET"] })
+  .https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     try {
