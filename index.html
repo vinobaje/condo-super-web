@@ -604,7 +604,7 @@ footer{background:#111122;color:rgba(255,255,255,.55);padding:48px 24px 32px}
 
   </div>
 
-  <p style="text-align:center;font-size:13px;color:#9CA3AF;margin-top:20px"> All subscriptions are purchased securely through Apple. <a href="#" style="color:#9CA3AF">Restore Purchases</a></p>
+  <p style="text-align:center;font-size:13px;color:#9CA3AF;margin-top:20px"> Payments are processed securely by Stripe. Cancel anytime. <a href="/contact.html" style="color:#9CA3AF">Manage subscription</a></p>
 
   <script>
   var currentBillingMode = 'monthly';
@@ -728,14 +728,7 @@ document.querySelectorAll('.fblock,.wframe,.stat').forEach(el => {
 </script>
 <!-- ═══════════════════════════════════════════════════════════════
      STRIPE EMBEDDED PAYMENT MODAL
-     Add this block just before 
-
-<!-- Condo Super Live Chat -->
-<script src="/chat-widget.js"></script>
-</body> in index.html
-     Replace STRIPE_PUBLISHABLE_KEY with your real key from Stripe Dashboard
-     Replace FIREBASE_FUNCTIONS_URL with your deployed functions URL
-     e.g. https://us-central1-condo-super-app-web.cloudfunctions.net
+     Keys are configured below in STRIPE_PUBLISHABLE_KEY / FUNCTIONS_URL.
 ═══════════════════════════════════════════════════════════════ -->
 
 <!-- Stripe.js -->
