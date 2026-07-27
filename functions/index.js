@@ -28,16 +28,16 @@ const WEBHOOK_SECRETS = (process.env.STRIPE_WEBHOOK_SECRETS || "")
 // ─── REAL PRICE IDs ───────────────────────────────────────────────────────────
 const PRICES = {
   starter: {
-    monthly: "price_1TB3pp0nNg9OZ0P5mADcQ6jn",
-    yearly:  "price_1TB3pp0nNg9OZ0P5npjzQty0",
+    monthly: "price_1TB46L1oh0YXTAjTgrVlgRhD", // $49.00/mo
+    yearly:  "price_1TB46M1oh0YXTAjTsE9tg7fN", // $470.40/yr ($39.20/mo)
   },
   professional: {
-    monthly: "price_1TB3qI0nNg9OZ0P5ovYi65IB",
-    yearly:  "price_1TB3qh0nNg9OZ0P5ybbyqX5i",
+    monthly: "price_1TB46N1oh0YXTAjT4zGH18DE", // $149.00/mo
+    yearly:  "price_1TB46M1oh0YXTAjTYMxFdCqF", // $1430.40/yr ($119.20/mo)
   },
   enterprise: {
-    monthly: "price_1TB3rD0nNg9OZ0P5yigJli5u",
-    yearly:  "price_1TB3rd0nNg9OZ0P5QcM0esit",
+    monthly: "price_1TB46N1oh0YXTAjT6UXFGFbY", // $249.00/mo
+    yearly:  "price_1TB46M1oh0YXTAjTdUbGWQvB", // $2390.40/yr ($199.20/mo)
   },
 };
 
