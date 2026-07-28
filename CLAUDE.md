@@ -271,13 +271,14 @@ git push https://TOKEN@github.com/vinobaje/condo-super-web.git main
 
 ## Firebase Projects — Hosting & Functions Reference
 
-### ⚠️ IMPORTANT: Two separate Firebase projects are used
+### ⚠️ IMPORTANT: everything lives in `condo-super`
+
+Hosting **and** functions are both in `condo-super`. `condo-super-app-web` is
+**deprecated** — see the note at the bottom of this section.
 
 ---
 
-### Project 1: `condo-super`
-**Purpose:** Hosts the marketing website (condosuper.app)
-**DO NOT deploy functions here** — this project has existing iOS app functions that must not be touched
+### `condo-super` — the only project you deploy to
 
 | Property | Value |
 |---|---|
@@ -285,69 +286,72 @@ git push https://TOKEN@github.com/vinobaje/condo-super-web.git main
 | Hosting site | `condo-super-app` |
 | Live URLs | `condosuper.app`, `condo-super-app.web.app`, `condo-super-app.firebaseapp.com` |
 | Realtime DB | `https://condo-super-default-rtdb.firebaseio.com` |
-| What's deployed here | `index.html`, `chat-widget.js`, `admin-chat.html`, `support.html`, `contact.html` |
-| Existing iOS functions | `onEmployeeCreated`, `recalculateCounts`, `parseActivityFromVoice`, `trackStorageUpload`, `onEmployeeDeleted`, `onSiteDeleted`, `trackStorageDelete`, `onSubscriptionChange`, `onSiteCreated` |
+| Hosting content | `index.html`, `chat-widget.js`, `admin-chat.html`, `support.html`, `contact.html` |
+| Web functions (this repo) | `createPaymentIntent`, `stripeWebhook`, `getSubscriptionStatus`, `cancelSubscription`, `chatbot` |
+| Functions URL | `https://us-central1-condo-super.cloudfunctions.net/` |
+| Runtime | nodejs22, gen-1, firebase-functions v7 |
+| iOS functions (other repo) | 18 functions — `parseActivityFromVoice`, `onEmployeeCreated`, `translateText`, `compressIncidentVideo`, etc. **Never prune these.** |
 
-**Deploy command (hosting only):**
-```bash
-echo '{"projects":{"default":"condo-super"}}' > .firebaserc
-firebase deploy --only hosting --project condo-super
-```
-
----
-
-### Project 2: `condo-super-app-web`
-**Purpose:** Hosts the website's Cloud Functions (Stripe payments + AI chatbot)
-**Safe to deploy functions here** — empty project, no existing functions to worry about
-
-| Property | Value |
-|---|---|
-| Project ID | `condo-super-app-web` |
-| Hosting site | `condo-super-app-web` |
-| Live URLs | `condo-super-app-web.web.app` |
-| Realtime DB | `https://condo-super-app-web-default-rtdb.firebaseio.com` |
-| Functions deployed | `createPaymentIntent`, `stripeWebhook`, `getSubscriptionStatus`, `cancelSubscription`, `chatbot` |
-| Functions URL | `https://us-central1-condo-super-app-web.cloudfunctions.net/` |
-
-**Deploy command (functions only):**
-```bash
-echo '{"projects":{"default":"condo-super-app-web"}}' > .firebaserc
-firebase deploy --only functions --project condo-super-app-web
-```
+Secrets live in **Google Secret Manager**, not `.env`: `STRIPE_SECRET`,
+`STRIPE_WEBHOOK_SECRETS`, `ANTHROPIC_API_KEY`. They are bound per-function via
+`runWith({ secrets: [...] })`. `functions.config()` is removed in
+firebase-functions v7 — do not reintroduce it.
 
 ---
 
-### functions/.env (required — never committed to git)
+### 🔴 Deploy functions BY NAME — always
+
+`condo-super` hosts functions from **two repos**. The plain
+`firebase deploy --only functions` **prunes every function not in the local
+source**, which from this repo would delete all 18 iOS functions.
+
+```bash
+firebase deploy --only \
+functions:createPaymentIntent,functions:stripeWebhook,functions:getSubscriptionStatus,functions:cancelSubscription,functions:chatbot \
+--project condo-super
 ```
-STRIPE_SECRET=sk_live_YOUR_STRIPE_SECRET_KEY
-ANTHROPIC_API_KEY=sk-ant-YOUR_ANTHROPIC_API_KEY
+
+Or a single one:
+```bash
+firebase deploy --only functions:createPaymentIntent --project condo-super
 ```
+
+Never use the unscoped form. Never pass `--force`. Never answer "yes" to a
+deletion prompt.
 
 ---
 
-### Standard Deploy Workflow (do this every time)
+### Standard Deploy Workflow
 
 ```bash
-# 1. Pull latest from GitHub
+# 1. Pull latest
 git pull
 
-# 2. Deploy website to condosuper.app
-echo '{"projects":{"default":"condo-super"}}' > .firebaserc
+# 2. Website
 firebase deploy --only hosting --project condo-super
 
-# 3. Deploy functions (Stripe + AI chatbot)
-echo '{"projects":{"default":"condo-super-app-web"}}' > .firebaserc
-firebase deploy --only functions --project condo-super-app-web
-
-# 4. Reset .firebaserc back to condo-super for next time
-echo '{"projects":{"default":"condo-super"}}' > .firebaserc
+# 3. Functions — BY NAME (see above). Only the ones you changed.
+firebase deploy --only functions:createPaymentIntent --project condo-super
 ```
+
+`.firebaserc` stays on `condo-super` permanently — no more swapping.
+
+---
+
+### Deprecated: `condo-super-app-web`
+
+Still holds stale nodejs20 copies of all five functions with **no secrets in
+Secret Manager**, so nothing can be deployed there. Nothing points at it as of
+2026-07-27. Kept only so its URLs don't 404 for stragglers; safe to delete once
+you're confident nothing references it.
 
 ### ⚠️ Common Mistakes to Avoid
 - NEVER run `cd condo-super-web` if you are already inside the project folder
-- NEVER run `firebase deploy --only functions --project condo-super` — this will overwrite the iOS app functions!
+- NEVER run `firebase deploy --only functions` unscoped — it deletes the 18 iOS functions
+- Stripe price IDs are hardcoded in `functions/index.js` — verify against the live
+  account before trusting them; they were wrong from Mar–Jul 2026 and silently
+  broke every checkout
 - ALWAYS check `.firebaserc` before deploying — run `cat .firebaserc` to verify
-- ALWAYS recreate `functions/.env` after a fresh `git clone` — it is not in git
 
 ### Correct Working Directory
 ```
