@@ -81,6 +81,34 @@ exports.createPaymentIntent = functions
   });
 });
 
+// ─── Stripe API shape helpers ─────────────────────────────────────────────────
+// The webhook endpoints run API version 2026-02-25.clover, which removed two
+// fields this handler used to rely on. Read both the old and new locations so
+// the code works regardless of which version an event was serialised with.
+//
+//   invoice.subscription        -> invoice.parent.subscription_details.subscription
+//   subscription.current_period_end -> subscription.items.data[i].current_period_end
+
+function subscriptionIdFromInvoice(invoice) {
+  const raw =
+    invoice.subscription ??                                        // pre-2025-03-31
+    invoice.parent?.subscription_details?.subscription ??           // current
+    invoice.lines?.data?.find((l) => l.subscription)?.subscription; // line-item fallback
+  // Either a bare id or an expanded object
+  return typeof raw === "string" ? raw : raw?.id ?? null;
+}
+
+function periodEnd(sub) {
+  let ts = sub.current_period_end;                                  // pre-2025-03-31
+  if (!Number.isFinite(ts)) {
+    const ends = (sub.items?.data ?? [])                            // current
+      .map((i) => i.current_period_end)
+      .filter((n) => Number.isFinite(n) && n > 0);
+    ts = ends.length ? Math.min(...ends) : null;                    // soonest renewal
+  }
+  return Number.isFinite(ts) && ts > 0 ? new Date(ts * 1000) : null;
+}
+
 // ─── 2. STRIPE WEBHOOK ────────────────────────────────────────────────────────
 // Tries all 4 signing secrets since each event destination has its own.
 // NOTE: signature verification MUST use req.rawBody (the untouched Buffer),
@@ -112,14 +140,17 @@ exports.stripeWebhook = functions
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
-        const sub = await stripeClient.subscriptions.retrieve(invoice.subscription);
+        const subId = subscriptionIdFromInvoice(invoice);
+        if (!subId) { console.log(`No subscription on invoice ${invoice.id} — skipping`); break; }
+        const sub = await stripeClient.subscriptions.retrieve(subId);
         const { plan, billing, email } = sub.metadata;
+        if (!email) { console.warn(`Subscription ${subId} has no metadata.email — skipping`); break; }
         await db.collection("subscriptions").doc(email).set({
           customerId: invoice.customer,
-          subscriptionId: invoice.subscription,
+          subscriptionId: subId,
           plan, billing, email,
           status: "active",
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          currentPeriodEnd: periodEnd(sub),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         console.log(`✅ Active: ${email} → ${plan} (${billing})`);
@@ -128,8 +159,11 @@ exports.stripeWebhook = functions
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;
-        const sub = await stripeClient.subscriptions.retrieve(invoice.subscription);
+        const subId = subscriptionIdFromInvoice(invoice);
+        if (!subId) { console.log(`No subscription on invoice ${invoice.id} — skipping`); break; }
+        const sub = await stripeClient.subscriptions.retrieve(subId);
         const { email } = sub.metadata;
+        if (!email) { console.warn(`Subscription ${subId} has no metadata.email — skipping`); break; }
         await db.collection("subscriptions").doc(email).set({
           status: "payment_failed",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -141,6 +175,7 @@ exports.stripeWebhook = functions
       case "customer.subscription.deleted": {
         const sub = event.data.object;
         const { email } = sub.metadata;
+        if (!email) { console.warn(`Subscription ${sub.id} has no metadata.email — skipping`); break; }
         await db.collection("subscriptions").doc(email).set({
           status: "cancelled",
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -153,11 +188,14 @@ exports.stripeWebhook = functions
       case "customer.subscription.updated": {
         const sub = event.data.object;
         const { email, plan, billing } = sub.metadata;
-        await db.collection("subscriptions").doc(email).set({
+        if (!email) { console.warn(`Subscription ${sub.id} has no metadata.email — skipping`); break; }
+        const payload = {
           status: sub.status, plan, billing,
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+        };
+        const end = periodEnd(sub);
+        if (end) payload.currentPeriodEnd = end;   // never write an Invalid Date
+        await db.collection("subscriptions").doc(email).set(payload, { merge: true });
         console.log(`🔄 Updated: ${email} → ${sub.status}`);
         break;
       }
