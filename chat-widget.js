@@ -7,6 +7,11 @@
 
   const FB_URL        = 'https://condo-super-default-rtdb.firebaseio.com';
   const CHATBOT_URL   = 'https://us-central1-condo-super.cloudfunctions.net/chatbot';
+  // Firebase web API key of the condo-super-web app. Public by design: it identifies the
+  // project, it doesn't grant access (the database rules do that).
+  const API_KEY       = 'AIzaSyCrRmt9U0ycF3-IzxXcTXU0FHTLcOG1I5Q';
+  const SIGN_UP_URL   = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
+  const REFRESH_URL   = 'https://securetoken.googleapis.com/v1/token';
   const BRAND         = { color: '#FF5722', navy: '#1a1a2e' };
 
   let mode         = 'ai';
@@ -19,15 +24,48 @@
   let aiHistory    = [];
   let step         = 'intro';
 
-  function getSessionId() {
-    let id = sessionStorage.getItem('cs_session');
-    if (!id) { id = 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2,9); sessionStorage.setItem('cs_session', id); }
-    return id;
+  // When a chat goes to a person, the visitor gets an anonymous Firebase login. Their chat
+  // lives at chats/<uid>; the database rules let only them, and the chat agents, open it.
+  // Kept for the tab (sessionStorage), so a reload carries on the same chat.
+  const AUTH_KEY = 'cs_auth';
+  let authInFlight = null;
+
+  function readAuth() { try { return JSON.parse(sessionStorage.getItem(AUTH_KEY) || 'null'); } catch(e) { return null; } }
+  function saveAuth(a) { try { sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch(e) {} return a; }
+
+  function visitorAuth() {
+    const a = readAuth();
+    if (a && a.idToken && a.expiresAt - Date.now() > 60000) return Promise.resolve(a);
+    if (!authInFlight) authInFlight = renewAuth(a).finally(() => { authInFlight = null; });
+    return authInFlight;
   }
 
-  async function fbSet(path, data) { try { await fetch(`${FB_URL}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch(e){} }
-  async function fbPush(path, data) { try { await fetch(`${FB_URL}/${path}.json`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch(e){} }
-  async function fbGet(path) { try { const r = await fetch(`${FB_URL}/${path}.json`); return r.ok ? await r.json() : null; } catch(e){ return null; } }
+  async function renewAuth(a) {
+    if (a && a.refreshToken) {
+      const r = await fetch(`${REFRESH_URL}?key=${API_KEY}`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'grant_type=refresh_token&refresh_token=' + encodeURIComponent(a.refreshToken) });
+      if (r.ok) {
+        const d = await r.json();
+        return saveAuth({ uid: d.user_id, idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + Number(d.expires_in) * 1000 });
+      }
+    }
+    const r = await fetch(`${SIGN_UP_URL}?key=${API_KEY}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ returnSecureToken: true }) });
+    if (!r.ok) throw new Error('chat sign-in failed (' + r.status + ')');
+    const d = await r.json();
+    return saveAuth({ uid: d.localId, idToken: d.idToken, refreshToken: d.refreshToken, expiresAt: Date.now() + Number(d.expiresIn) * 1000 });
+  }
+
+  async function db(method, path, data) {
+    try {
+      const { idToken } = await visitorAuth();
+      const init = data === undefined ? { method } : { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) };
+      const r = await fetch(`${FB_URL}/${path}.json?auth=${encodeURIComponent(idToken)}`, init);
+      if (!r.ok) { console.warn('Chat:', method, path, r.status); return null; }
+      return await r.json();
+    } catch(e) { console.warn('Chat:', e); return null; }
+  }
+  const fbPatch = (path, data) => db('PATCH', path, data);
+  const fbPush  = (path, data) => db('POST', path, data);
+  const fbGet   = (path)       => db('GET', path);
 
   function injectStyles() {
     document.head.insertAdjacentHTML('beforeend', `<style>
@@ -96,8 +134,8 @@
         <div id="cs-intro">
           <div class="cs-ii">👋 Hi there!</div>
           <div class="cs-is">Ask our AI anything about Condo Super — features, pricing, getting started. We'll connect you to a human if needed.</div>
-          <input class="cs-in" id="cs-name" type="text" placeholder="Your name *"/>
-          <input class="cs-in" id="cs-email" type="email" placeholder="Your email *"/>
+          <input class="cs-in" id="cs-name" type="text" maxlength="100" placeholder="Your name *"/>
+          <input class="cs-in" id="cs-email" type="email" maxlength="254" placeholder="Your email *"/>
           <input class="cs-in" id="cs-first" type="text" placeholder="What's your question?"/>
           <button class="cs-sb" onclick="window.__cs.start()">Start Chat →</button>
         </div>
@@ -107,7 +145,7 @@
             <button class="cs-hbtn" onclick="window.__cs.escalate('manual')">👤 Talk to a human instead</button>
           </div>
           <div class="cs-irow">
-            <textarea id="cs-inp" rows="1" placeholder="Type a message..." onkeydown="window.__cs.key(event)"></textarea>
+            <textarea id="cs-inp" rows="1" maxlength="2000" placeholder="Type a message..." onkeydown="window.__cs.key(event)"></textarea>
             <button id="cs-send" onclick="window.__cs.send()">➤</button>
           </div>
         </div>
@@ -131,7 +169,7 @@
     const first = document.getElementById('cs-first').value.trim();
     if (!name)  { hl('cs-name'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { hl('cs-email'); return; }
-    visitorName = name; visitorEmail = email; sessionId = getSessionId();
+    visitorName = name.slice(0, 100); visitorEmail = email;
     document.getElementById('cs-intro').style.display = 'none';
     document.getElementById('cs-body').style.display  = 'flex';
     document.getElementById('cs-foot').style.display  = 'block';
@@ -174,18 +212,28 @@
       : "I'll connect you with our support team who can help with this. We'll reply shortly.";
     body().insertAdjacentHTML('beforeend', `<div class="cs-ecard">🧑‍💼 ${msg}</div>`);
     scrollBottom();
-    await fbSet(`chats/${sessionId}`, { visitorName, visitorEmail, page: window.location.href, startedAt: new Date().toISOString(), status: 'open', unreadByAgent: true, escalatedFrom: 'ai', escalateReason: reason });
+    try { sessionId = (await visitorAuth()).uid; }
+    catch(e) {
+      console.warn('Chat:', e);
+      addSys("We couldn't reach the support team. Please email info@condosuper.app.");
+      return;
+    }
+    // PATCH, not PUT: escalating again after a reload must not wipe the messages already there.
+    const opened = await fbPatch(`chats/${sessionId}`, { visitorName, visitorEmail, page: window.location.href.slice(0, 2048), startedAt: new Date().toISOString(), status: 'open', unreadByAgent: true, escalatedFrom: 'ai', escalateReason: String(reason).slice(0, 40) });
+    if (!opened) { sessionId = null; addSys("We couldn't reach the support team. Please email info@condosuper.app."); return; }
     for (const m of aiHistory) {
-      await fbPush(`chats/${sessionId}/messages`, { text: m.content, sender: m.role === 'user' ? 'visitor' : 'agent', senderName: m.role === 'user' ? visitorName : 'Condo Super AI', timestamp: new Date().toISOString(), isAiMessage: m.role === 'assistant' });
+      await fbPush(`chats/${sessionId}/messages`, { text: String(m.content).slice(0, 2000), sender: m.role === 'user' ? 'visitor' : 'agent', senderName: m.role === 'user' ? visitorName : 'Condo Super AI', timestamp: new Date().toISOString(), isAiMessage: m.role === 'assistant' });
     }
     startPolling();
     addSys('Support team notified · we\'ll reply shortly');
   }
 
   async function liveMsg(text) {
-    await fbPush(`chats/${sessionId}/messages`, { text, sender: 'visitor', senderName: visitorName, timestamp: new Date().toISOString() });
-    await fbSet(`chats/${sessionId}/lastMessage`, { text, timestamp: new Date().toISOString() });
-    await fbSet(`chats/${sessionId}/unreadByAgent`, true);
+    if (!sessionId) return;
+    text = text.slice(0, 2000);
+    const timestamp = new Date().toISOString();
+    await fbPush(`chats/${sessionId}/messages`, { text, sender: 'visitor', senderName: visitorName, timestamp });
+    await fbPatch(`chats/${sessionId}`, { lastMessage: { text, timestamp, sender: 'visitor' }, unreadByAgent: true });
   }
 
   function startPolling() {

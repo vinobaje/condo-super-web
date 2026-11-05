@@ -120,9 +120,10 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#F
     <div class="login-logo">🏢</div>
     <div class="login-title">Condo Super</div>
     <div class="login-sub">Live Chat Admin Dashboard</div>
-    <input class="login-input" type="password" id="admin-password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
-    <button class="login-btn" onclick="login()">Sign In</button>
-    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
+    <input class="login-input" type="email" id="admin-email" placeholder="Email" autocomplete="username" onkeydown="if(event.key==='Enter')login()">
+    <input class="login-input" type="password" id="admin-password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" id="login-btn" onclick="login()">Sign In</button>
+    <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
@@ -140,7 +141,10 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#F
         </div>
         <div class="sidebar-sub">Condo Super Support</div>
       </div>
-      <button class="sound-btn" id="sound-btn" onclick="toggleSound()" title="Toggle notification sound">🔔</button>
+      <div style="display:flex;gap:6px">
+        <button class="sound-btn" id="sound-btn" onclick="toggleSound()" title="Toggle notification sound">🔔</button>
+        <button class="sound-btn" onclick="signOut()" title="Sign out">Sign out</button>
+      </div>
     </div>
 
     <div class="conv-search">
@@ -203,8 +207,12 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#F
 <script>
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 const FB_URL       = 'https://condo-super-default-rtdb.firebaseio.com';
-const ADMIN_PASS   = 'CondoSuper2024!'; // Change this password!
+// Firebase web API key of the condo-super-web app (public; the database rules grant access).
+const API_KEY      = 'AIzaSyCrRmt9U0ycF3-IzxXcTXU0FHTLcOG1I5Q';
 const AGENT_NAME   = 'Vino';
+// Agents sign in with their Condo Super (Firebase Auth) email and password. The database
+// rules let a login list and answer chats only if its uid is under chatAgents/.
+const AUTH_KEY     = 'cs_agent_auth';
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
 let conversations  = {};
@@ -216,38 +224,102 @@ let soundEnabled   = true;
 let searchQuery    = '';
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
-function login() {
-  const pw = document.getElementById('admin-password').value;
-  if (pw === ADMIN_PASS) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'grid';
-    startConvPolling();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('admin-password').style.borderColor = '#DC2626';
-    setTimeout(() => {
-      document.getElementById('admin-password').style.borderColor = '#E5E5DC';
-      document.getElementById('login-error').style.display = 'none';
-    }, 3000);
+let authInFlight = null;
+
+function readAuth() { try { return JSON.parse(sessionStorage.getItem(AUTH_KEY) || 'null'); } catch { return null; } }
+function saveAuth(a) { try { sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch {} return a; }
+
+function showLoginError(text) {
+  const err = document.getElementById('login-error');
+  err.textContent = text;
+  err.style.display = 'block';
+}
+
+async function login() {
+  const email = document.getElementById('admin-email').value.trim();
+  const pw    = document.getElementById('admin-password').value;
+  if (!email || !pw) { showLoginError('Enter your email and password.'); return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ email, password: pw, returnSecureToken: true }),
+    });
+    if (!r.ok) { showLoginError('Wrong email or password.'); return; }
+    const d = await r.json();
+    saveAuth({ uid: d.localId, idToken: d.idToken, refreshToken: d.refreshToken, expiresAt: Date.now() + Number(d.expiresIn) * 1000 });
+    document.getElementById('admin-password').value = '';
+    await enterApp();
+  } catch { showLoginError("Couldn't sign in. Check your connection and try again."); }
+  finally { btn.disabled = false; }
+}
+
+// Opens the dashboard if the signed-in account may list chats; otherwise back to sign-in.
+async function enterApp() {
+  const r = await dbFetch('GET', 'chats', undefined, 'shallow=true');
+  if (!r || !r.ok) {
+    signOut();
+    showLoginError(r && r.status === 401 ? "This account isn't set up to answer chats." : "Couldn't open the chats. Try again.");
+    return;
   }
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'grid';
+  startConvPolling();
+}
+
+function signOut() {
+  try { sessionStorage.removeItem(AUTH_KEY); } catch {}
+  if (convPollTimer) clearInterval(convPollTimer);
+  if (msgPollTimer) clearInterval(msgPollTimer);
+  convPollTimer = msgPollTimer = null;
+  conversations = {}; activeSession = null;
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function agentAuth() {
+  const a = readAuth();
+  if (!a) return Promise.resolve(null);
+  if (a.idToken && a.expiresAt - Date.now() > 60000) return Promise.resolve(a);
+  if (!authInFlight) authInFlight = refreshAuth(a).finally(() => { authInFlight = null; });
+  return authInFlight;
+}
+
+async function refreshAuth(a) {
+  try {
+    const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${API_KEY}`, {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'grant_type=refresh_token&refresh_token=' + encodeURIComponent(a.refreshToken),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return saveAuth({ uid: d.user_id, idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + Number(d.expires_in) * 1000 });
+  } catch { return null; }
 }
 
 // ─── FIREBASE ────────────────────────────────────────────────────────────────
-async function fbGet(path) {
-  try {
-    const r = await fetch(`${FB_URL}/${path}.json`);
-    return r.ok ? await r.json() : null;
-  } catch { return null; }
+async function dbFetch(method, path, data, query) {
+  const a = await agentAuth();
+  if (!a) return null;
+  const init = data === undefined ? { method } : { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) };
+  try { return await fetch(`${FB_URL}/${path}.json?auth=${encodeURIComponent(a.idToken)}${query ? '&' + query : ''}`, init); }
+  catch { return null; }
 }
-async function fbSet(path, data) {
-  try { await fetch(`${FB_URL}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch{}
+async function db(method, path, data) {
+  const r = await dbFetch(method, path, data);
+  if (r && r.status === 401 && document.getElementById('main-app').style.display !== 'none') {
+    signOut();
+    showLoginError('Your session ended. Sign in again.');
+  }
+  return r && r.ok ? await r.json() : null;
 }
-async function fbPush(path, data) {
-  try { await fetch(`${FB_URL}/${path}.json`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }); } catch{}
-}
-async function fbDelete(path) {
-  try { await fetch(`${FB_URL}/${path}.json`, { method:'DELETE' }); } catch{}
-}
+const fbGet    = (path)       => db('GET', path);
+const fbSet    = (path, data) => db('PUT', path, data);
+const fbPatch  = (path, data) => db('PATCH', path, data);
+const fbPush   = (path, data) => db('POST', path, data);
+const fbDelete = (path)       => db('DELETE', path);
 
 // ─── POLL CONVERSATIONS ───────────────────────────────────────────────────────
 async function startConvPolling() {
@@ -324,7 +396,7 @@ function renderConvList(data) {
     const statusLbl = conv.status === 'open' ? '● Open' : '○ Closed';
 
     return `
-      <div class="conv-item ${isActive ? 'active' : ''} ${isUnread ? 'unread' : ''}" onclick="selectConv('${id}')">
+      <div class="conv-item ${isActive ? 'active' : ''} ${isUnread ? 'unread' : ''}" data-id="${escHtml(id)}" onclick="selectConv(this.dataset.id)">
         <div class="conv-name">${escHtml(conv.visitorName || 'Unknown')}</div>
         <div class="conv-preview">${escHtml(preview.substring(0, 50))}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
@@ -415,8 +487,7 @@ async function sendReply() {
   };
 
   await fbPush(`chats/${activeSession}/messages`, msg);
-  await fbSet(`chats/${activeSession}/lastMessage`, { text, timestamp: msg.timestamp });
-  await fbSet(`chats/${activeSession}/unreadByVisitor`, true);
+  await fbPatch(`chats/${activeSession}`, { lastMessage: { text, timestamp: msg.timestamp, sender: 'agent' }, unreadByVisitor: true });
   await loadMessages(activeSession);
 }
 
@@ -541,8 +612,11 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Auto-focus password on load
-window.onload = () => document.getElementById('admin-password')?.focus();
+// Still signed in from earlier in this tab: go straight to the chats. Otherwise focus sign-in.
+window.onload = () => {
+  if (readAuth()) enterApp();
+  else document.getElementById('admin-email')?.focus();
+};
 </script>
 </body>
 </html>

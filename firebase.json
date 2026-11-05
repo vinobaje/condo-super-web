@@ -1,16 +1,21 @@
 {
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "site": "condo-super-app",
     "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
+      "**/.*/**",
       "CLAUDE.md",
       "STRIPE_SETUP.md",
       "functions/**",
       "SET_FIREBASE_CONFIG.sh",
       "*.md",
-      "database.rules.json"
+      "database.rules.json",
+      "database-tests/**"
     ],
     "rewrites": [
       {

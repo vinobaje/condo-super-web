@@ -1,0 +1,8 @@
+{
+  "name": "condo-super-web-database-tests",
+  "private": true,
+  "description": "Tests for database.rules.json (website chat) against the Realtime Database emulator.",
+  "scripts": {
+    "test": "cd .. && firebase emulators:exec --only database --project demo-condo-chat \"node --test database-tests/rules.test.mjs\""
+  }
+}
